@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model assignments {
+  id          String        @id
+  title       String
+  description String
+  level       Level
+  subject     Subject
+  dueDate     DateTime
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  createdBy   String?
+  users       users?        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  grades      grades[]
+  submissions submissions[]
+
+  @@index([createdBy])
+  @@index([level, subject])
+}
+
+model grades {
+  id           String      @id
+  studentId    String
+  assignmentId String
+  score        Float
+  maxScore     Float       @default(100)
+  feedback     String?
+  gradedBy     String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime
+  assignments  assignments @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  users        users       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, assignmentId])
+  @@index([assignmentId])
+  @@index([studentId])
+}
+
+model learning_materials {
+  id          String   @id
+  title       String
+  description String
+  level       Level
+  subject     Subject
+  videoUrl    String?
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  createdBy   String?
+  attachments Json?
+  users       users?   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([createdBy])
+  @@index([level, subject])
+}
+
+model submissions {
+  id           String           @id
+  userId       String
+  type         SubmissionType
+  fileUrl      String
+  assignmentId String?
+  status       SubmissionStatus @default(PENDING)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime
+  metadata     Json?
+  assignments  assignments?     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  users        users            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId])
+  @@index([userId, type])
+}
+
+model users {
+  id                 String               @id
+  email              String               @unique
+  password           String
+  name               String
+  role               Role
+  level              Level?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  icNumber           String?
+  phoneNumber        String?
+  parentName         String?
+  parentPhone        String?
+  assignments        assignments[]
+  grades             grades[]
+  learning_materials learning_materials[]
+  submissions        submissions[]
+}
+
+enum Level {
+  SECONDARY_1
+  SECONDARY_2
+  SECONDARY_3
+  SECONDARY_4
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum Subject {
+  AKIDAH
+  AKHLAK
+  FIQH
+  FARAIDH
+  SIRAH
+  HADIS
+  MUSTOLAH_HADIS
+  ENGLISH
+  MALAY
+  ARABIC
+  MATHS
+  IRK
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SubmissionType {
+  MEDICAL_CERT
+  EARLY_DISMISSAL
+  ASSIGNMENT
+}

@@ -1,0 +1,6 @@
+{
+    "buildCommand": "pnpm prisma generate && pnpm next build",
+    "installCommand": "pnpm install",
+    "framework": "nextjs",
+    "regions": ["iad1"]
+  }

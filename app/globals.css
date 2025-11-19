@@ -1,0 +1,328 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* SURM Color Tokens */
+    --surm-green: #0F2C18;
+    --surm-green-soft: #264130;
+    --surm-accent: #3D8747;
+    --surm-beige: #C5B09D;
+    --surm-paper: #F9F6F2;
+    --surm-text-dark: #0F2C18;
+    --surm-text-light: #FFFFFF;
+    
+    /* Input border color to override autofill */
+    --input-border: hsl(214.3, 31.8%, 91.4%);
+    
+    /* Legacy shadcn variables for compatibility */
+    --background: 30 30% 96%; /* surm-paper (#F9F6F2) in HSL format */
+    --foreground: 142 64% 12%; /* surm-text-dark (#0F2C18) in HSL format */
+    --card: 0 0% 100%; /* white in HSL format */
+    --card-foreground: 142 64% 12%; /* surm-text-dark in HSL format */
+    --popover: 0 0% 100%; /* white in HSL format */
+    --popover-foreground: 142 64% 12%; /* surm-text-dark in HSL format */
+    --primary: 61 135 71; /* surm-accent */
+    --primary-foreground: 255 255 255;
+    --secondary: 197 176 157; /* surm-beige */
+    --secondary-foreground: 15 44 24;
+    --muted: 242 231 219; /* light beige tint */
+    --muted-foreground: 15 44 24;
+    --accent: 61 135 71;
+    --accent-foreground: 255 255 255;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 255 255 255;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 61 135 71;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-[var(--surm-paper)] text-[var(--surm-text-dark)];
+    font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', 'Cormorant Garamond', 'Times New Roman', serif;
+    line-height: 1.15;
+    color: var(--surm-text-dark);
+    font-weight: 600;
+  }
+  
+  h1 {
+    font-size: 2.4rem;
+    line-height: 1.1;
+  }
+  
+  h2 {
+    font-size: 1.8rem;
+    line-height: 1.2;
+  }
+  
+  h3 {
+    font-size: 1.55rem;
+    line-height: 1.2;
+  }
+  
+  p, span, div, label {
+    font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+  }
+  
+  .description-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  /* Override browser autofill yellow background - comprehensive fix */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px white inset !important;
+    -webkit-text-fill-color: #0F2C18 !important;
+    box-shadow: 0 0 0 1000px white inset, 0 0 0 0 transparent !important;
+    background-color: white !important;
+    background-image: none !important;
+    color: #0F2C18 !important;
+    caret-color: #0F2C18 !important;
+    border: 1px solid hsl(214.3, 31.8%, 91.4%) !important;
+    border-color: hsl(214.3, 31.8%, 91.4%) !important;
+    outline: none !important;
+    outline-color: transparent !important;
+    outline-width: 0 !important;
+    -webkit-appearance: none !important;
+    transition: background-color 5000s ease-in-out 0s, border-color 0s !important;
+  }
+
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  textarea:-webkit-autofill:active,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus,
+  select:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px white inset !important;
+    -webkit-text-fill-color: #0F2C18 !important;
+    box-shadow: 0 0 0 1000px white inset !important;
+    background-color: white !important;
+    background-image: none !important;
+    color: #0F2C18 !important;
+    caret-color: #0F2C18 !important;
+    border-color: hsl(214.3, 31.8%, 91.4%) !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+  }
+
+  /* Additional autofill override for Firefox */
+  input:-moz-autofill,
+  textarea:-moz-autofill,
+  select:-moz-autofill {
+    background-color: white !important;
+    color: var(--surm-text-dark) !important;
+  }
+
+  /* Ensure inputs have proper SURM styling */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="url"],
+  textarea,
+  select {
+    background-color: white !important;
+    color: var(--surm-text-dark) !important;
+    border-color: hsl(var(--input)) !important;
+  }
+
+  /* Make placeholder text lighter and more subtle - clearly distinct from actual text */
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af !important; /* gray-400 - light gray that's clearly different from dark text (#0F2C18) */
+    opacity: 0.7 !important; /* Reduced opacity for more subtle appearance */
+  }
+
+  input::-webkit-input-placeholder,
+  textarea::-webkit-input-placeholder {
+    color: #9ca3af !important; /* gray-400 - light gray that's clearly different from dark text (#0F2C18) */
+    opacity: 0.7 !important; /* Reduced opacity for more subtle appearance */
+  }
+
+  input::-moz-placeholder,
+  textarea::-moz-placeholder {
+    color: #9ca3af !important; /* gray-400 - light gray that's clearly different from dark text (#0F2C18) */
+    opacity: 0.7 !important; /* Reduced opacity for more subtle appearance */
+  }
+
+  input:-ms-input-placeholder,
+  textarea:-ms-input-placeholder {
+    color: #9ca3af !important; /* gray-400 - light gray that's clearly different from dark text (#0F2C18) */
+    opacity: 0.7 !important; /* Reduced opacity for more subtle appearance */
+  }
+
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus,
+  input[type="number"]:focus,
+  input[type="date"]:focus,
+  input[type="url"]:focus,
+  textarea:focus,
+  select:focus {
+    background-color: white !important;
+    color: var(--surm-text-dark) !important;
+    border-color: var(--surm-accent) !important;
+    outline: none !important;
+  }
+
+  /* Remove any browser default styling on autofill focus */
+  input:-webkit-autofill:focus {
+    border: 1px solid #3D8747 !important;
+    -webkit-box-shadow: 0 0 0 1000px white inset, 0 0 0 2px #3D8747 !important;
+    box-shadow: 0 0 0 1000px white inset, 0 0 0 2px #3D8747 !important;
+    outline: none !important;
+  }
+
+  /* Additional override to prevent yellow border flash */
+  input[type="email"]:-webkit-autofill,
+  input[type="password"]:-webkit-autofill,
+  input[type="text"]:-webkit-autofill {
+    border: 1px solid hsl(214.3, 31.8%, 91.4%) !important;
+    border-color: hsl(214.3, 31.8%, 91.4%) !important;
+    -webkit-box-shadow: 0 0 0 1000px white inset, 0 0 0 0 transparent !important;
+    box-shadow: 0 0 0 1000px white inset, 0 0 0 0 transparent !important;
+    outline: none !important;
+    outline-color: transparent !important;
+    outline-width: 0 !important;
+  }
+
+  /* Force remove any yellow/green glow from autofill */
+  input:-webkit-autofill:focus-visible {
+    border: 1px solid #3D8747 !important;
+    border-color: #3D8747 !important;
+    -webkit-box-shadow: 0 0 0 1000px white inset, 0 0 0 2px #3D8747 !important;
+    box-shadow: 0 0 0 1000px white inset, 0 0 0 2px #3D8747 !important;
+    outline: none !important;
+  }
+
+  /* Remove autofill styling completely on all states */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  input:-webkit-autofill:focus-visible {
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  /* Nuclear option: Remove ALL possible yellow/green styling from autofill */
+  input[type="email"]:-webkit-autofill,
+  input[type="email"]:-webkit-autofill:hover,
+  input[type="email"]:-webkit-autofill:focus,
+  input[type="email"]:-webkit-autofill:active {
+    border: 1px solid hsl(214.3, 31.8%, 91.4%) !important;
+    border-color: hsl(214.3, 31.8%, 91.4%) !important;
+    -webkit-box-shadow: 0 0 0 1000px white inset !important;
+    box-shadow: 0 0 0 1000px white inset !important;
+    outline: none !important;
+    outline-offset: 0 !important;
+    -webkit-outline: none !important;
+  }
+
+  input[type="email"]:-webkit-autofill:focus,
+  input[type="email"]:-webkit-autofill:focus-visible {
+    border: 1px solid #3D8747 !important;
+    border-color: #3D8747 !important;
+    -webkit-box-shadow: 0 0 0 1000px white inset, 0 0 0 2px #3D8747 !important;
+    box-shadow: 0 0 0 1000px white inset, 0 0 0 2px #3D8747 !important;
+  }
+
+  /* Final override - target all possible autofill states with maximum specificity */
+  form input[type="email"]:-webkit-autofill,
+  form input[type="email"]:-webkit-autofill:hover,
+  form input[type="email"]:-webkit-autofill:focus,
+  form input[type="email"]:-webkit-autofill:active {
+    background-color: white !important;
+    background-clip: padding-box !important;
+    -webkit-background-clip: padding-box !important;
+    border: 1px solid var(--input-border) !important;
+    border-color: var(--input-border) !important;
+    -webkit-box-shadow: 0 0 0 1000px white inset !important;
+    box-shadow: 0 0 0 1000px white inset !important;
+    color: #0F2C18 !important;
+    -webkit-text-fill-color: #0F2C18 !important;
+  }
+
+  /* Ensure no yellow appears in UI components - override any default yellow styling */
+  [data-radix-tabs-trigger][data-state="active"] {
+    background-color: var(--surm-accent) !important;
+    color: white !important;
+  }
+
+  [data-radix-select-content] {
+    background-color: white !important;
+    color: var(--surm-text-dark) !important;
+  }
+
+  [data-radix-select-item][data-highlighted],
+  [data-radix-select-item]:focus {
+    background-color: var(--surm-accent) !important;
+    color: white !important;
+  }
+
+  /* Ensure dialogs and modals have white background, not yellow */
+  [role="dialog"],
+  [data-radix-dialog-content],
+  [data-radix-alert-dialog-content] {
+    background-color: white !important;
+    color: var(--surm-text-dark) !important;
+  }
+
+  /* Remove any yellow from delete/destructive buttons */
+  button[class*="destructive"],
+  button.bg-red-600,
+  button.bg-red-700 {
+    border-color: #dc2626 !important;
+    color: white !important;
+  }
+
+  button[class*="destructive"] svg,
+  button.bg-red-600 svg,
+  button.bg-red-700 svg {
+    color: white !important;
+    fill: white !important;
+  }
+
+  button[class*="destructive"]:focus,
+  button.bg-red-600:focus,
+  button.bg-red-700:focus {
+    outline-color: #dc2626 !important;
+    ring-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+  }
+
+  /* Remove any yellow from outline buttons - ensure they use green theme */
+  button[class*="outline"]:not([class*="destructive"]):not([class*="red"]) {
+    background-color: white !important;
+    color: var(--surm-green) !important;
+    border-color: rgba(15, 44, 24, 0.3) !important;
+  }
+
+  button[class*="outline"]:not([class*="destructive"]):not([class*="red"]) svg {
+    color: var(--surm-green) !important;
+  }
+
+  button[class*="outline"]:not([class*="destructive"]):not([class*="red"]):hover {
+    background-color: var(--surm-paper) !important;
+    color: var(--surm-green) !important;
+  }
+
+}
+
