@@ -617,7 +617,7 @@ export default function AdminUserManagement({
                 <TableCell>{user.role === "STUDENT" ? (user.icNumber || "-") : "-"}</TableCell>
                 <TableCell>{user.role === "STUDENT" ? (user.phoneNumber || "-") : "-"}</TableCell>
                 <TableCell>{user.role === "STUDENT" ? (user.parentName ? `${user.parentName} (${user.parentPhone || "N/A"})` : "-") : "-"}</TableCell>
-                <TableCell>{user._count.submissions}</TableCell>
+                <TableCell>{user._count?.submissions ?? 0}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button

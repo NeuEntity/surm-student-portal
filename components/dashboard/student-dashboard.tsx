@@ -150,7 +150,7 @@ export default function StudentDashboard({
 
   // Filter form submissions by current year
   const currentYear = new Date().getFullYear();
-  const formSubmissions = submissions.filter(
+  const formSubmissions = (submissions || []).filter(
     (s) => {
       const submissionYear = new Date(s.createdAt).getFullYear();
       return (s.type === "MEDICAL_CERT" || s.type === "EARLY_DISMISSAL") && submissionYear === currentYear;
@@ -899,7 +899,7 @@ export default function StudentDashboard({
               <div className="space-y-4 sm:space-y-6">
                 {filteredAssignments.map((assignment, index) => {
                   const isBeige = index % 2 === 0;
-                  const assignmentSubmission = submissions.find(
+                  const assignmentSubmission = (submissions || []).find(
                     (s) => s.type === "ASSIGNMENT" && s.assignmentId === assignment.id
                   );
                   const isPastDue = new Date(assignment.dueDate) < new Date();

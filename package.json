@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
+    "add:demo": "tsx scripts/add-demo-accounts.ts",
     "vercel:build": "prisma generate && prisma migrate deploy && next build",
     "railway:build": "bash scripts/railway-build.sh",
     "postinstall": "prisma generate"
