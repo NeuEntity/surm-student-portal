@@ -16,30 +16,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const users = await prisma.users.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        level: true,
-        icNumber: true,
-        phoneNumber: true,
-        parentName: true,
-        parentPhone: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            submissions: true,
-            grades: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    // Use raw query to fetch users with new fields (teacherRoles, classesTaught, className, employmentType)
+    // since Prisma Client might be stale
+    const users = await prisma.$queryRaw<any[]>`
+      SELECT 
+        u.id, u.name, u.email, u.role, u."level", 
+        u."icNumber", u."phoneNumber", u."parentName", u."parentPhone",
+        u."createdAt", u."updatedAt",
+        u."teacherRoles", u."classesTaught", u."className", u."employmentType",
+        (SELECT COUNT(*) FROM submissions s WHERE s."userId" = u.id) as "submissions_count",
+        (SELECT COUNT(*) FROM grades g WHERE g."studentId" = u.id) as "grades_count"
+      FROM users u
+      ORDER BY u."createdAt" DESC
+    `;
 
-    return NextResponse.json(users);
+    // Format the result to match the expected shape (counts are usually numbers or bigints)
+    const formattedUsers = users.map(u => ({
+      ...u,
+      _count: {
+        submissions: Number(u.submissions_count || 0),
+        grades: Number(u.grades_count || 0)
+      }
+    }));
+
+    return NextResponse.json(formattedUsers);
   } catch (error) {
     console.error("Error fetching users:", error);
     return NextResponse.json(
@@ -62,7 +62,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, password, role, level, icNumber, phoneNumber, parentName, parentPhone } = body;
+    const { 
+      name, email, password, role, level, 
+      icNumber, phoneNumber, parentName, parentPhone,
+      teacherRoles, classesTaught, className, employmentType 
+    } = body;
 
     if (!name || !email || !password || !role) {
       return NextResponse.json(
@@ -80,11 +84,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const existingUser = await prisma.users.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
+    const existingUsers = await prisma.$queryRaw<any[]>`SELECT id FROM users WHERE email = ${email}`;
+    if (existingUsers.length > 0) {
       return NextResponse.json(
         { error: "Email already exists" },
         { status: 400 }
@@ -93,42 +94,57 @@ export async function POST(request: NextRequest) {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const id = crypto.randomUUID();
+    const now = new Date();
 
-    // Create user data
-    const userData: any = {
-      id: crypto.randomUUID(),
-      name,
-      email,
-      password: hashedPassword,
-      role: role as Role,
-      level: role === "STUDENT" ? (level as Level) : null,
-      updatedAt: new Date(),
+    // Prepare fields for raw insert
+    const roleVal = role as Role;
+    const levelVal = role === "STUDENT" ? (level as Level) : null;
+    
+    // Optional fields
+    const icNum = (role === "STUDENT" && icNumber) ? icNumber : null;
+    const phone = (role === "STUDENT" && phoneNumber) ? phoneNumber : null;
+    const pName = (role === "STUDENT" && parentName) ? parentName : null;
+    const pPhone = (role === "STUDENT" && parentPhone) ? parentPhone : null;
+    const clsName = (role === "STUDENT" && className) ? className : null;
+    
+    // Teacher fields
+    const tRoles = (role === "TEACHER" && Array.isArray(teacherRoles)) ? teacherRoles : [];
+    const cTaught = (role === "TEACHER" && Array.isArray(classesTaught)) ? classesTaught : [];
+    const empType = (role === "TEACHER" && employmentType) ? employmentType : null;
+
+    // Use executeRaw for insert to handle new fields
+    await prisma.$executeRaw`
+      INSERT INTO users (
+        id, name, email, password, role, level, 
+        "icNumber", "phoneNumber", "parentName", "parentPhone",
+        "teacherRoles", "classesTaught", "className", "employmentType",
+        "createdAt", "updatedAt"
+      ) VALUES (
+        ${id}, ${name}, ${email}, ${hashedPassword}, ${roleVal}::"Role", ${levelVal}::"Level",
+        ${icNum}, ${phone}, ${pName}, ${pPhone},
+        ${tRoles}, ${cTaught}, ${clsName}, ${empType}::"EmploymentType",
+        ${now}, ${now}
+      )
+    `;
+
+    // Log action
+    await prisma.$executeRaw`
+      INSERT INTO audit_logs (
+        id, action, "targetId", "targetType", "actorId", details, "createdAt"
+      ) VALUES (
+        ${crypto.randomUUID()}, 'CREATE_USER', ${id}, 'USER', ${user.id}, 
+        ${JSON.stringify({ name, email, role })}::jsonb, ${now}
+      )
+    `;
+
+    // Return the created user object (approximate)
+    const newUser = {
+      id, name, email, role: roleVal, level: levelVal,
+      icNumber: icNum, phoneNumber: phone, parentName: pName, parentPhone: pPhone,
+      teacherRoles: tRoles, classesTaught: cTaught, className: clsName, employmentType: empType,
+      createdAt: now, updatedAt: now
     };
-
-    // Add student-specific fields
-    if (role === "STUDENT") {
-      if (icNumber) userData.icNumber = icNumber;
-      if (phoneNumber) userData.phoneNumber = phoneNumber;
-      if (parentName) userData.parentName = parentName;
-      if (parentPhone) userData.parentPhone = parentPhone;
-    }
-
-    // Create user
-    const newUser = await prisma.users.create({
-      data: userData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        level: true,
-        icNumber: true,
-        phoneNumber: true,
-        parentName: true,
-        parentPhone: true,
-        createdAt: true,
-      },
-    });
 
     return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
@@ -139,4 +155,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

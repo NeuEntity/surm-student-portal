@@ -13,7 +13,7 @@ const buttonVariants = cva(
         destructive:
           "bg-red-600 text-white hover:bg-red-700 border border-red-700 focus-visible:ring-red-600 focus-visible:border-red-700",
         outline:
-          "border-2 border-[var(--surm-green)] bg-white text-[var(--surm-text-dark)] hover:bg-[var(--surm-paper)] hover:border-[var(--surm-accent)] hover:text-[var(--surm-accent)] font-semibold shadow-sm",
+          "btn-outline-variant border-2 border-[var(--surm-green)] bg-white text-[var(--surm-text-dark)] hover:bg-[var(--surm-paper)] hover:border-[var(--surm-accent)] hover:text-[var(--surm-accent)] font-semibold shadow-sm",
         secondary:
           "border-2 border-[var(--surm-green)]/60 bg-white text-[var(--surm-green)] hover:bg-[var(--surm-paper)] hover:border-[var(--surm-green)]",
         ghost: "hover:bg-accent hover:text-accent-foreground",

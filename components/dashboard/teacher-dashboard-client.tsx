@@ -7,12 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { BookOpen, FileText, Plus, Edit, Trash2, GraduationCap, FileCheck } from "lucide-react";
+import { 
+  BookOpen, 
+  FileText, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  GraduationCap, 
+  FileCheck, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight,
+  Filter
+} from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type MaterialAttachment = {
   url: string;
@@ -79,6 +98,7 @@ type FormSubmission = {
     name: string;
     email: string;
     level: Level | null;
+    className?: string | null;
   };
 };
 
@@ -134,6 +154,8 @@ export default function TeacherDashboardClient({
   grades: initialGrades,
   formSubmissions: initialFormSubmissions,
   assignmentSubmissions: initialAssignmentSubmissions,
+  teacherRoles = [],
+  classesTaught = [],
 }: {
   initialMaterials: Material[];
   initialAssignments: Assignment[];
@@ -141,12 +163,13 @@ export default function TeacherDashboardClient({
   grades: Grade[];
   formSubmissions: FormSubmission[];
   assignmentSubmissions: AssignmentSubmission[];
+  teacherRoles: string[];
+  classesTaught: string[];
 }) {
   const router = useRouter();
   const [materials, setMaterials] = useState(initialMaterials);
   const [assignments, setAssignments] = useState(initialAssignments);
   const [grades, setGrades] = useState(initialGrades);
-  const [formSubmissions, setFormSubmissions] = useState(initialFormSubmissions);
   const [assignmentSubmissions, setAssignmentSubmissions] = useState(initialAssignmentSubmissions);
   const [editMaterial, setEditMaterial] = useState<Material | null>(null);
   const [editAssignment, setEditAssignment] = useState<Assignment | null>(null);
@@ -161,7 +184,6 @@ export default function TeacherDashboardClient({
   const [materialsLevelFilter, setMaterialsLevelFilter] = useState<Level | "all">("all");
   const [assignmentsLevelFilter, setAssignmentsLevelFilter] = useState<Level | "all">("all");
   const [gradesLevelFilter, setGradesLevelFilter] = useState<Level | "all">("all");
-  const [formsLevelFilter, setFormsLevelFilter] = useState<Level | "all">("all");
   const [gradeStudentFilter, setGradeStudentFilter] = useState<string>("all");
   
   // Subject filters for each tab
@@ -169,77 +191,96 @@ export default function TeacherDashboardClient({
   const [assignmentsSubjectFilter, setAssignmentsSubjectFilter] = useState<Subject | "all">("all");
   const [gradesSubjectFilter, setGradesSubjectFilter] = useState<Subject | "all">("all");
 
+  // Forms Tab State
+  const [serverForms, setServerForms] = useState<FormSubmission[]>([]);
+  const [formsPage, setFormsPage] = useState(1);
+  const [formsTotalPages, setFormsTotalPages] = useState(1);
+  const [formsLoading, setFormsLoading] = useState(false);
+  const [formsSearch, setFormsSearch] = useState("");
+  const [formsClassFilter, setFormsClassFilter] = useState<string>("all");
+  const [formsTypeFilter, setFormsTypeFilter] = useState<string>("all");
+
+  // Check Access Control for Forms
+  const canViewForms = teacherRoles.includes("TAHFIZ") || teacherRoles.includes("FORM");
+
   // Sync state with props when they change (after page refresh)
   useEffect(() => {
     setMaterials(initialMaterials);
     setAssignments(initialAssignments);
     setGrades(initialGrades);
-    setFormSubmissions(initialFormSubmissions);
     setAssignmentSubmissions(initialAssignmentSubmissions);
-  }, [initialMaterials, initialAssignments, initialGrades, initialFormSubmissions, initialAssignmentSubmissions]);
+  }, [initialMaterials, initialAssignments, initialGrades, initialAssignmentSubmissions]);
+
+  // Fetch Forms Effect
+  useEffect(() => {
+    if (!canViewForms) return;
+
+    const fetchForms = async () => {
+      setFormsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.append("page", formsPage.toString());
+        params.append("limit", "20");
+        if (formsSearch) params.append("search", formsSearch);
+        if (formsTypeFilter !== "all") params.append("type", formsTypeFilter);
+        if (formsClassFilter !== "all") params.append("class", formsClassFilter);
+        
+        const res = await fetch(`/api/submissions?${params.toString()}`);
+        if (res.ok) {
+           const data = await res.json();
+           setServerForms(data.data);
+           setFormsTotalPages(data.meta.totalPages || 1);
+        } else {
+            console.error("Failed to fetch forms");
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setFormsLoading(false);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+        fetchForms();
+    }, 300); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [formsPage, formsSearch, formsTypeFilter, formsClassFilter, canViewForms]);
 
   // Filter materials by level and subject
   const filteredMaterials = materials.filter(m => {
-    if (materialsLevelFilter !== "all" && m.level !== materialsLevelFilter) {
-      return false;
-    }
-    if (materialsSubjectFilter !== "all" && m.subject !== materialsSubjectFilter) {
-      return false;
-    }
+    if (materialsLevelFilter !== "all" && m.level !== materialsLevelFilter) return false;
+    if (materialsSubjectFilter !== "all" && m.subject !== materialsSubjectFilter) return false;
     return true;
   });
 
   // Filter assignments by level and subject
   const filteredAssignments = assignments.filter(a => {
-    if (assignmentsLevelFilter !== "all" && a.level !== assignmentsLevelFilter) {
-      return false;
-    }
-    if (assignmentsSubjectFilter !== "all" && a.subject !== assignmentsSubjectFilter) {
-      return false;
-    }
+    if (assignmentsLevelFilter !== "all" && a.level !== assignmentsLevelFilter) return false;
+    if (assignmentsSubjectFilter !== "all" && a.subject !== assignmentsSubjectFilter) return false;
     return true;
   });
 
   // Filter grades by level, subject, and student
   const filteredGrades = grades.filter(g => {
-    // Find the student for this grade
     const student = students.find(s => s.id === g.studentId);
     if (!student) return false;
-    
-    // Filter by level
-    if (gradesLevelFilter !== "all" && student.level !== gradesLevelFilter) {
-      return false;
-    }
-    
-    // Filter by subject
-    if (gradesSubjectFilter !== "all" && g.assignments.subject !== gradesSubjectFilter) {
-      return false;
-    }
-    
-    // Filter by student
-    if (gradeStudentFilter !== "all" && g.studentId !== gradeStudentFilter) {
-      return false;
-    }
-    
+    if (gradesLevelFilter !== "all" && student.level !== gradesLevelFilter) return false;
+    if (gradesSubjectFilter !== "all" && g.assignments.subject !== gradesSubjectFilter) return false;
+    if (gradeStudentFilter !== "all" && g.studentId !== gradeStudentFilter) return false;
     return true;
   });
-
-  // Filter form submissions by level
-  const filteredFormSubmissions = formsLevelFilter === "all"
-    ? formSubmissions
-    : formSubmissions.filter(f => f.users.level === formsLevelFilter);
 
   // Get students filtered by level for grade management
   const filteredStudentsForGrades = gradesLevelFilter === "all"
     ? students
     : students.filter(s => s.level === gradesLevelFilter);
 
+  // ... (handleDeleteMaterial, handleDeleteAssignment, handleUpdateMaterial, handleUpdateAssignment, handleSubmitGrade - same as before)
   async function handleDeleteMaterial(id: string) {
     try {
       const res = await fetch(`/api/materials/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        router.refresh();
-      } else {
+      if (res.ok) router.refresh();
+      else {
         const errorData = await res.json();
         alert(errorData.error || "Failed to delete material");
       }
@@ -252,9 +293,8 @@ export default function TeacherDashboardClient({
   async function handleDeleteAssignment(id: string) {
     try {
       const res = await fetch(`/api/assignments/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        router.refresh();
-      } else {
+      if (res.ok) router.refresh();
+      else {
         const errorData = await res.json();
         alert(errorData.error || "Failed to delete assignment");
       }
@@ -267,24 +307,21 @@ export default function TeacherDashboardClient({
   async function handleUpdateMaterial(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editMaterial) return;
-
     const formData = new FormData(e.currentTarget);
     const data = {
       title: formData.get("title"),
       description: formData.get("description"),
-      level: editMaterial.level, // Use current editMaterial state for level
-      subject: editMaterial.subject, // Use current editMaterial state for subject
+      level: editMaterial.level,
+      subject: editMaterial.subject,
       videoUrl: formData.get("videoUrl") || null,
       fileUrl: formData.get("fileUrl") || null,
     };
-
     try {
       const res = await fetch(`/api/materials/${editMaterial.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       if (res.ok) {
         router.refresh();
         setEditMaterial(null);
@@ -301,23 +338,20 @@ export default function TeacherDashboardClient({
   async function handleUpdateAssignment(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editAssignment) return;
-
     const formData = new FormData(e.currentTarget);
     const data = {
       title: formData.get("title"),
       description: formData.get("description"),
-      level: editAssignment.level, // Use current editAssignment state for level
-      subject: editAssignment.subject, // Use current editAssignment state for subject
+      level: editAssignment.level,
+      subject: editAssignment.subject,
       dueDate: formData.get("dueDate"),
     };
-
     try {
       const res = await fetch(`/api/assignments/${editAssignment.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       if (res.ok) {
         router.refresh();
         setEditAssignment(null);
@@ -333,12 +367,10 @@ export default function TeacherDashboardClient({
 
   async function handleSubmitGrade(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    
     if (!selectedStudent || !selectedAssignment || !gradeScore) {
       alert("Please fill in all required fields");
       return;
     }
-    
     const data = {
       studentId: selectedStudent,
       assignmentId: selectedAssignment,
@@ -346,23 +378,19 @@ export default function TeacherDashboardClient({
       maxScore: gradeMaxScore || "100",
       feedback: gradeFeedback || null,
     };
-
     try {
       const res = await fetch("/api/grades", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       if (res.ok) {
-        // Reset form
         setSelectedStudent("");
         setSelectedAssignment("");
         setGradeScore("");
         setGradeMaxScore("100");
         setGradeFeedback("");
         setGradeDialog(false);
-        // Refresh the page to get updated grades
         router.refresh();
       } else {
         const errorData = await res.json();
@@ -397,41 +425,25 @@ export default function TeacherDashboardClient({
         </TabsList>
 
         <TabsContent value="materials" className="space-y-4">
-          {/* Level and Subject Filters */}
-          <div className="flex flex-wrap items-center gap-4 mb-4">
+           {/* ... Materials Tab Content (Keep existing) ... */}
+           <div className="flex flex-wrap items-center gap-4 mb-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="materials-level-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">
-                Filter by Level:
-              </Label>
+              <Label htmlFor="materials-level-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">Filter by Level:</Label>
               <Select value={materialsLevelFilter} onValueChange={(value) => setMaterialsLevelFilter(value as Level | "all")}>
-                <SelectTrigger id="materials-level-filter" className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger id="materials-level-filter" className="w-48"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Levels</SelectItem>
-                  {LEVELS.map((level) => (
-                    <SelectItem key={level.value} value={level.value}>
-                      {level.label}
-                    </SelectItem>
-                  ))}
+                  {LEVELS.map((level) => (<SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <Label htmlFor="materials-subject-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">
-                Filter by Subject:
-              </Label>
+              <Label htmlFor="materials-subject-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">Filter by Subject:</Label>
               <Select value={materialsSubjectFilter} onValueChange={(value) => setMaterialsSubjectFilter(value as Subject | "all")}>
-                <SelectTrigger id="materials-subject-filter" className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger id="materials-subject-filter" className="w-48"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Subjects</SelectItem>
-                  {SUBJECTS.map((subject) => (
-                    <SelectItem key={subject.value} value={subject.value}>
-                      {subject.label}
-                    </SelectItem>
-                  ))}
+                  {SUBJECTS.map((subject) => (<SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -444,20 +456,11 @@ export default function TeacherDashboardClient({
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredMaterials.map((material) => {
-                return (
-                  <section
-                    key={material.id}
-                    className="rounded-xl p-6 flex flex-col md:flex-row gap-6 items-start bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow"
-                  >
+              {filteredMaterials.map((material) => (
+                <section key={material.id} className="rounded-xl p-6 flex flex-col md:flex-row gap-6 items-start bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex-1">
-                      <h3 className="text-xl font-serif font-semibold mb-2 text-[var(--surm-text-dark)]">
-                        {material.title}
-                      </h3>
-                      <p className="text-sm mb-3 font-sans description-text text-[var(--surm-text-dark)]/70">
-                        {material.description.substring(0, 150)}
-                        {material.description.length > 150 && "..."}
-                      </p>
+                      <h3 className="text-xl font-serif font-semibold mb-2 text-[var(--surm-text-dark)]">{material.title}</h3>
+                      <p className="text-sm mb-3 font-sans description-text text-[var(--surm-text-dark)]/70">{material.description.substring(0, 150)}{material.description.length > 150 && "..."}</p>
                       <div className="flex gap-4 text-xs font-sans text-[var(--surm-text-dark)]/60">
                         <span>{LEVELS.find((l) => l.value === material.level)?.label}</span>
                         <span>{SUBJECTS.find((s) => s.value === material.subject)?.label}</span>
@@ -467,15 +470,8 @@ export default function TeacherDashboardClient({
                           <p className="font-semibold text-[var(--surm-text-dark)] mb-1">Uploaded Files</p>
                           <div className="space-y-1">
                             {material.attachments.map((attachment, idx) => (
-                              <a
-                                key={`${attachment.url}-${idx}`}
-                                href={attachment.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-[var(--surm-text-dark)]/70 hover:text-[var(--surm-accent)]"
-                              >
-                                <FileText className="w-3 h-3" />
-                                {attachment.name || `Attachment ${idx + 1}`}
+                              <a key={`${attachment.url}-${idx}`} href={attachment.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[var(--surm-text-dark)]/70 hover:text-[var(--surm-accent)]">
+                                <FileText className="w-3 h-3" />{attachment.name || `Attachment ${idx + 1}`}
                               </a>
                             ))}
                           </div>
@@ -483,79 +479,43 @@ export default function TeacherDashboardClient({
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditMaterial(material)}
-                        className="rounded-full"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditMaterial(material)} className="rounded-full"><Edit className="w-4 h-4" /></Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="destructive" className="rounded-full bg-red-600 hover:bg-red-700 text-white border-red-700">
-                            <Trash2 className="w-4 h-4 text-white" />
-                          </Button>
+                          <Button size="sm" variant="destructive" className="rounded-full bg-red-600 hover:bg-red-700 text-white border-red-700"><Trash2 className="w-4 h-4 text-white" /></Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Material?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete &quot;{material.title}&quot;. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteMaterial(material.id)} className="bg-red-600 hover:bg-red-700 text-white">
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
+                          <AlertDialogHeader><AlertDialogTitle>Delete Material?</AlertDialogTitle><AlertDialogDescription>This will permanently delete &quot;{material.title}&quot;. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteMaterial(material.id)} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction></AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                  </section>
-                );
-              })}
+                </section>
+              ))}
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="assignments" className="space-y-4">
-          {/* Level and Subject Filters */}
-          <div className="flex flex-wrap items-center gap-4 mb-4">
+           {/* ... Assignments Tab Content (Keep existing) ... */}
+           <div className="flex flex-wrap items-center gap-4 mb-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="assignments-level-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">
-                Filter by Level:
-              </Label>
+              <Label htmlFor="assignments-level-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">Filter by Level:</Label>
               <Select value={assignmentsLevelFilter} onValueChange={(value) => setAssignmentsLevelFilter(value as Level | "all")}>
-                <SelectTrigger id="assignments-level-filter" className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger id="assignments-level-filter" className="w-48"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Levels</SelectItem>
-                  {LEVELS.map((level) => (
-                    <SelectItem key={level.value} value={level.value}>
-                      {level.label}
-                    </SelectItem>
-                  ))}
+                  {LEVELS.map((level) => (<SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-center gap-2">
-              <Label htmlFor="assignments-subject-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">
-                Filter by Subject:
-              </Label>
+              <Label htmlFor="assignments-subject-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">Filter by Subject:</Label>
               <Select value={assignmentsSubjectFilter} onValueChange={(value) => setAssignmentsSubjectFilter(value as Subject | "all")}>
-                <SelectTrigger id="assignments-subject-filter" className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger id="assignments-subject-filter" className="w-48"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Subjects</SelectItem>
-                  {SUBJECTS.map((subject) => (
-                    <SelectItem key={subject.value} value={subject.value}>
-                      {subject.label}
-                    </SelectItem>
-                  ))}
+                  {SUBJECTS.map((subject) => (<SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -569,72 +529,37 @@ export default function TeacherDashboardClient({
           ) : (
             <div className="space-y-4">
               {filteredAssignments.map((assignment) => {
-                const submissionsForAssignment = assignmentSubmissions.filter(
-                  (sub) => sub.assignmentId === assignment.id
-                );
-                
+                const submissionsForAssignment = assignmentSubmissions.filter((sub) => sub.assignmentId === assignment.id);
                 return (
-                  <section
-                    key={assignment.id}
-                    className="rounded-xl p-6 bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow"
-                  >
+                  <section key={assignment.id} className="rounded-xl p-6 bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-col md:flex-row gap-6 items-start">
                       <div className="flex-1">
-                        <h3 className="text-xl font-serif font-semibold mb-2 text-[var(--surm-text-dark)]">
-                          {assignment.title}
-                        </h3>
-                        <p className="text-sm mb-3 font-sans description-text text-[var(--surm-text-dark)]/70">
-                          {assignment.description.substring(0, 150)}
-                          {assignment.description.length > 150 && "..."}
-                        </p>
+                        <h3 className="text-xl font-serif font-semibold mb-2 text-[var(--surm-text-dark)]">{assignment.title}</h3>
+                        <p className="text-sm mb-3 font-sans description-text text-[var(--surm-text-dark)]/70">{assignment.description.substring(0, 150)}{assignment.description.length > 150 && "..."}</p>
                         <div className="flex gap-4 text-xs font-sans text-[var(--surm-text-dark)]/60 mb-4">
                           <span>{LEVELS.find((l) => l.value === assignment.level)?.label}</span>
                           <span>{SUBJECTS.find((s) => s.value === assignment.subject)?.label}</span>
                           <span>Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
                         </div>
-                        
-                        {/* Submissions Section */}
                         {submissionsForAssignment.length > 0 && (
                           <div className="mt-4 pt-4 border-t border-[var(--surm-green)]/20">
-                            <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)] mb-3">
-                              Student Submissions ({submissionsForAssignment.length})
-                            </p>
+                            <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)] mb-3">Student Submissions ({submissionsForAssignment.length})</p>
                             <div className="space-y-3">
                               {submissionsForAssignment.map((submission) => {
-                                const statusColor = 
-                                  submission.status === "APPROVED" ? "text-green-600 bg-green-50" :
-                                  submission.status === "REJECTED" ? "text-red-600 bg-red-50" :
-                                  "text-yellow-600 bg-yellow-50";
-                                
+                                const statusColor = submission.status === "APPROVED" ? "text-green-600 bg-green-50" : submission.status === "REJECTED" ? "text-red-600 bg-red-50" : "text-yellow-600 bg-yellow-50";
                                 const statusLabel = submission.status.charAt(0) + submission.status.slice(1).toLowerCase();
-                                
                                 return (
-                                  <div
-                                    key={submission.id}
-                                    className="rounded-lg p-3 bg-[var(--surm-paper)] border border-[var(--surm-green)]/10 flex items-center justify-between"
-                                  >
+                                  <div key={submission.id} className="rounded-lg p-3 bg-[var(--surm-paper)] border border-[var(--surm-green)]/10 flex items-center justify-between">
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
-                                        <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)]">
-                                          {submission.users.name}
-                                        </p>
-                                        <span className={`text-xs font-sans px-2 py-0.5 rounded-full ${statusColor}`}>
-                                          {statusLabel}
-                                        </span>
+                                        <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)]">{submission.users.name}</p>
+                                        <span className={`text-xs font-sans px-2 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
                                       </div>
-                                      <p className="text-xs font-sans text-[var(--surm-text-dark)]/60">
-                                        {submission.users.email} • Submitted: {new Date(submission.createdAt).toLocaleString()}
-                                      </p>
+                                      <p className="text-xs font-sans text-[var(--surm-text-dark)]/60">{submission.users.email} • Submitted: {new Date(submission.createdAt).toLocaleString()}</p>
                                     </div>
                                     {submission.fileUrl && submission.fileUrl !== "no-file-uploaded" && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => window.open(submission.fileUrl, "_blank")}
-                                        className="rounded-full ml-2"
-                                      >
-                                        <FileText className="w-4 h-4 mr-2" />
-                                        View File
+                                      <Button size="sm" variant="outline" onClick={() => window.open(submission.fileUrl, "_blank")} className="rounded-full ml-2">
+                                        <FileText className="w-4 h-4 mr-2" />View File
                                       </Button>
                                     )}
                                   </div>
@@ -643,41 +568,17 @@ export default function TeacherDashboardClient({
                             </div>
                           </div>
                         )}
-                        
-                        {submissionsForAssignment.length === 0 && (
-                          <p className="text-xs font-sans text-[var(--surm-text-dark)]/50 mt-2">
-                            No submissions yet
-                          </p>
-                        )}
+                        {submissionsForAssignment.length === 0 && <p className="text-xs font-sans text-[var(--surm-text-dark)]/50 mt-2">No submissions yet</p>}
                       </div>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditAssignment(assignment)}
-                          className="rounded-full"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditAssignment(assignment)} className="rounded-full"><Edit className="w-4 h-4" /></Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive" className="rounded-full bg-red-600 hover:bg-red-700 text-white border-red-700">
-                              <Trash2 className="w-4 h-4 text-white" />
-                            </Button>
+                            <Button size="sm" variant="destructive" className="rounded-full bg-red-600 hover:bg-red-700 text-white border-red-700"><Trash2 className="w-4 h-4 text-white" /></Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Assignment?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete &quot;{assignment.title}&quot;. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteAssignment(assignment.id)} className="bg-red-600 hover:bg-red-700 text-white">
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
+                            <AlertDialogHeader><AlertDialogTitle>Delete Assignment?</AlertDialogTitle><AlertDialogDescription>This will permanently delete &quot;{assignment.title}&quot;. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteAssignment(assignment.id)} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction></AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
                       </div>
@@ -690,84 +591,34 @@ export default function TeacherDashboardClient({
         </TabsContent>
 
         <TabsContent value="grades" className="space-y-6">
-          {/* Grade Management - Beige Panel */}
-          <section className="rounded-2xl bg-[var(--surm-beige)] p-8">
-            <h2 className="text-2xl font-serif font-semibold text-[var(--surm-text-dark)] mb-2">
-              Grade Management
-            </h2>
-            <p className="text-sm text-[var(--surm-text-dark)]/80 mb-6 font-sans">
-              Assign grades to students for their assignments
-            </p>
-            
-            {/* Level, Subject, and Student Filters */}
+           {/* ... Grades Tab Content (Keep existing) ... */}
+           <section className="rounded-2xl bg-[var(--surm-beige)] p-8">
+            <h2 className="text-2xl font-serif font-semibold text-[var(--surm-text-dark)] mb-2">Grade Management</h2>
+            <p className="text-sm text-[var(--surm-text-dark)]/80 mb-6 font-sans">Assign grades to students for their assignments</p>
             <div className="flex flex-wrap items-center gap-4 mb-6">
               <div className="flex items-center gap-2">
-                <Label htmlFor="grades-level-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">
-                  Level:
-                </Label>
-                <Select value={gradesLevelFilter} onValueChange={(value) => {
-                  setGradesLevelFilter(value as Level | "all");
-                  setGradeStudentFilter("all"); // Reset student filter when level changes
-                }}>
-                  <SelectTrigger id="grades-level-filter" className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    {LEVELS.map((level) => (
-                      <SelectItem key={level.value} value={level.value}>
-                        {level.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Label htmlFor="grades-level-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">Level:</Label>
+                <Select value={gradesLevelFilter} onValueChange={(value) => { setGradesLevelFilter(value as Level | "all"); setGradeStudentFilter("all"); }}>
+                  <SelectTrigger id="grades-level-filter" className="w-48"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Levels</SelectItem>{LEVELS.map((level) => (<SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Label htmlFor="grades-subject-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">
-                  Subject:
-                </Label>
+                <Label htmlFor="grades-subject-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">Subject:</Label>
                 <Select value={gradesSubjectFilter} onValueChange={(value) => setGradesSubjectFilter(value as Subject | "all")}>
-                  <SelectTrigger id="grades-subject-filter" className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Subjects</SelectItem>
-                    {SUBJECTS.map((subject) => (
-                      <SelectItem key={subject.value} value={subject.value}>
-                        {subject.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger id="grades-subject-filter" className="w-48"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Subjects</SelectItem>{SUBJECTS.map((subject) => (<SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Label htmlFor="grades-student-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">
-                  Student:
-                </Label>
+                <Label htmlFor="grades-student-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">Student:</Label>
                 <Select value={gradeStudentFilter} onValueChange={setGradeStudentFilter} disabled={gradesLevelFilter === "all"}>
-                  <SelectTrigger id="grades-student-filter" className="w-64">
-                    <SelectValue placeholder={gradesLevelFilter === "all" ? "Select level first" : "All Students"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Students</SelectItem>
-                    {filteredStudentsForGrades.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger id="grades-student-filter" className="w-64"><SelectValue placeholder={gradesLevelFilter === "all" ? "Select level first" : "All Students"} /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All Students</SelectItem>{filteredStudentsForGrades.map((student) => (<SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
             </div>
-            
-            <Button 
-              onClick={() => setGradeDialog(true)}
-              className="rounded-full bg-[var(--surm-accent)] text-white hover:bg-[#35803F] mb-6"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Grade
-            </Button>
-
+            <Button onClick={() => setGradeDialog(true)} className="rounded-full bg-[var(--surm-accent)] text-white hover:bg-[#35803F] mb-6"><Plus className="w-4 h-4 mr-2" />Add Grade</Button>
             {filteredGrades.length === 0 ? (
               <div className="rounded-xl p-12 bg-white border border-[var(--surm-green)]/20 text-center">
                 <GraduationCap className="w-12 h-12 mx-auto mb-4 text-[var(--surm-text-dark)]/40" />
@@ -776,474 +627,277 @@ export default function TeacherDashboardClient({
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredGrades.map((grade) => {
-                  return (
-                    <section
-                      key={grade.id}
-                      className="rounded-xl p-6 flex flex-col md:flex-row gap-4 items-start bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex-1">
-                        <p className="font-semibold font-sans mb-1 text-[var(--surm-text-dark)]">
-                          {grade.users.name}
-                        </p>
-                        <p className="text-sm mb-3 font-sans text-[var(--surm-text-dark)]/70">
-                          {grade.assignments.title}
-                        </p>
-                        <p className="text-2xl font-bold font-serif mt-2 text-[var(--surm-accent)]">
-                          {grade.score} / {grade.maxScore}
-                        </p>
-                        {grade.feedback && (
-                          <p className="text-sm mt-2 font-sans text-[var(--surm-text-dark)]/60">
-                            {grade.feedback}
-                          </p>
-                        )}
-                      </div>
-                    </section>
-                  );
-                })}
+                {filteredGrades.map((grade) => (
+                  <section key={grade.id} className="rounded-xl p-6 flex flex-col md:flex-row gap-4 items-start bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex-1">
+                      <p className="font-semibold font-sans mb-1 text-[var(--surm-text-dark)]">{grade.users.name}</p>
+                      <p className="text-sm mb-3 font-sans text-[var(--surm-text-dark)]/70">{grade.assignments.title}</p>
+                      <p className="text-2xl font-bold font-serif mt-2 text-[var(--surm-accent)]">{grade.score} / {grade.maxScore}</p>
+                      {grade.feedback && <p className="text-sm mt-2 font-sans text-[var(--surm-text-dark)]/60">{grade.feedback}</p>}
+                    </div>
+                  </section>
+                ))}
               </div>
             )}
-          </section>
+           </section>
         </TabsContent>
 
         <TabsContent value="submissions" className="space-y-6">
-          {/* Form Submissions - Beige Panel */}
           <section className="rounded-2xl bg-[var(--surm-beige)] p-8">
             <h2 className="text-2xl font-serif font-semibold text-[var(--surm-text-dark)] mb-2">
               Student Form Submissions
             </h2>
             <p className="text-sm text-[var(--surm-text-dark)]/80 mb-6 font-sans">
-              View and manage student form submissions (Medical Certificates and Early Dismissal Forms)
+              View and manage student form submissions (MC, Early Dismissal, Letters)
             </p>
-            
-            {/* Level Filter */}
-            <div className="flex items-center gap-4 mb-6">
-              <Label htmlFor="forms-level-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">
-                Filter by Level:
-              </Label>
-              <Select value={formsLevelFilter} onValueChange={(value) => setFormsLevelFilter(value as Level | "all")}>
-                <SelectTrigger id="forms-level-filter" className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
-                  {LEVELS.map((level) => (
-                    <SelectItem key={level.value} value={level.value}>
-                      {level.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            {filteredFormSubmissions.length === 0 ? (
-              <div className="rounded-xl p-12 bg-white border border-[var(--surm-green)]/20 text-center">
-                <FileCheck className="w-12 h-12 mx-auto mb-4 text-[var(--surm-text-dark)]/40" />
-                <p className="text-lg font-semibold text-[var(--surm-text-dark)] mb-2">No form submissions yet</p>
-                <p className="text-sm text-[var(--surm-text-dark)]/60">Form submissions from students will appear here</p>
+            {!canViewForms ? (
+              <div className="rounded-xl p-12 bg-red-50 border border-red-200 text-center">
+                <FileCheck className="w-12 h-12 mx-auto mb-4 text-red-400" />
+                <p className="text-lg font-semibold text-red-700 mb-2">Access Restricted</p>
+                <p className="text-sm text-red-600">Only Tahfiz teachers and Form teachers can view this section.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {filteredFormSubmissions.map((submission) => {
-                  const submissionTypeLabel = submission.type === SubmissionType.MEDICAL_CERT 
-                    ? "Medical Certificate" 
-                    : "Early Dismissal Form";
-                  
-                  const statusLabel = submission.status.charAt(0) + submission.status.slice(1).toLowerCase();
-                  
-                  const getStatusClass = () => {
-                    if (submission.status === "APPROVED") {
-                      return "text-green-600 bg-green-50";
-                    } else if (submission.status === "REJECTED") {
-                      return "text-red-600 bg-red-50";
-                    } else {
-                      return "text-yellow-600 bg-yellow-50";
-                    }
-                  };
-                  
-                  const metadata = submission.metadata as any;
-                  
-                  return (
-                    <section
-                      key={submission.id}
-                      className="rounded-xl p-6 flex flex-col md:flex-row gap-4 items-start bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <p className="font-semibold font-sans text-[var(--surm-text-dark)]">
-                            {submission.users.name}
-                          </p>
-                          <span className={`text-xs font-sans px-2 py-1 rounded-full ${getStatusClass()}`}>
-                            {statusLabel}
-                          </span>
-                        </div>
-                        <p className="text-sm mb-2 font-sans text-[var(--surm-text-dark)]/70">
-                          <span className="font-medium">Type:</span> {submissionTypeLabel}
-                        </p>
-                        {submission.users.level && (
-                          <p className="text-sm mb-2 font-sans text-[var(--surm-text-dark)]/70">
-                            <span className="font-medium">Level:</span> {LEVELS.find((l) => l.value === submission.users.level)?.label || submission.users.level}
-                          </p>
-                        )}
-                        <p className="text-sm mb-2 font-sans text-[var(--surm-text-dark)]/70">
-                          <span className="font-medium">Email:</span> {submission.users.email}
-                        </p>
-                        {metadata && (
-                          <div className="mt-3 p-3 bg-[var(--surm-paper)] rounded-lg">
-                            <p className="text-xs font-semibold font-sans text-[var(--surm-text-dark)]/80 mb-1">Form Details:</p>
-                            {submission.type === SubmissionType.MEDICAL_CERT && (
-                              <div className="text-xs font-sans text-[var(--surm-text-dark)]/70 space-y-1">
-                                {metadata.fullName && <p><span className="font-medium">Name:</span> {metadata.fullName}</p>}
-                                {metadata.class && <p><span className="font-medium">Class:</span> {metadata.class}</p>}
-                                {metadata.date && <p><span className="font-medium">Date:</span> {metadata.date}</p>}
-                                {metadata.reason && <p><span className="font-medium">Reason:</span> {metadata.reason}</p>}
-                              </div>
-                            )}
-                            {submission.type === SubmissionType.EARLY_DISMISSAL && (
-                              <div className="text-xs font-sans text-[var(--surm-text-dark)]/70 space-y-1">
-                                {metadata.fullName && <p><span className="font-medium">Name:</span> {metadata.fullName}</p>}
-                                {metadata.class && <p><span className="font-medium">Class:</span> {metadata.class}</p>}
-                                {metadata.day && metadata.month && metadata.year && (
-                                  <p><span className="font-medium">Date:</span> {metadata.day}/{metadata.month}/{metadata.year}</p>
-                                )}
-                                {metadata.time && <p><span className="font-medium">Time:</span> {metadata.time} {metadata.ampm || ""}</p>}
-                                {metadata.reason && <p><span className="font-medium">Reason:</span> {metadata.reason}</p>}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        <p className="text-xs mt-3 font-sans text-[var(--surm-text-dark)]/60">
-                          Submitted: {new Date(submission.createdAt).toLocaleString()}
-                        </p>
+              <>
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                  {/* Filters */}
+                  <div className="flex-1 flex flex-wrap gap-4">
+                    <div className="w-full md:w-auto">
+                      <Label className="text-xs font-semibold mb-1 block">Type</Label>
+                      <Select value={formsTypeFilter} onValueChange={setFormsTypeFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="All Types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value={SubmissionType.MEDICAL_CERT}>Medical Certificate</SelectItem>
+                          <SelectItem value={SubmissionType.EARLY_DISMISSAL}>Early Dismissal</SelectItem>
+                          <SelectItem value="LETTERS">Letters</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="w-full md:w-auto">
+                      <Label className="text-xs font-semibold mb-1 block">Class</Label>
+                      <Select value={formsClassFilter} onValueChange={setFormsClassFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="All Classes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Classes</SelectItem>
+                          {classesTaught.map((cls) => (
+                            <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="w-full md:w-auto flex-1 min-w-[200px]">
+                      <Label className="text-xs font-semibold mb-1 block">Search Student</Label>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by name..."
+                          className="pl-8"
+                          value={formsSearch}
+                          onChange={(e) => setFormsSearch(e.target.value)}
+                        />
                       </div>
-                      <div className="flex flex-col gap-2">
-                        {submission.fileUrl && submission.fileUrl !== "no-file-uploaded" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => window.open(submission.fileUrl, "_blank")}
-                            className="rounded-full"
-                          >
-                            <FileText className="w-4 h-4 mr-2" />
-                            View File
-                          </Button>
-                        )}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="rounded-md border bg-white">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Student Name</TableHead>
+                        <TableHead>Class</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {formsLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="h-24 text-center">
+                            Loading...
+                          </TableCell>
+                        </TableRow>
+                      ) : serverForms.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="h-24 text-center">
+                            No submissions found.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        serverForms.map((submission) => (
+                          <TableRow key={submission.id}>
+                            <TableCell className="font-medium">
+                              {submission.type === SubmissionType.MEDICAL_CERT ? "Medical Cert" : 
+                               submission.type === SubmissionType.EARLY_DISMISSAL ? "Early Dismissal" : "Letter"}
+                            </TableCell>
+                            <TableCell>{submission.users.name}</TableCell>
+                            <TableCell>{submission.users.className || "-"}</TableCell>
+                            <TableCell>{new Date(submission.createdAt).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                ${submission.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 
+                                  submission.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 
+                                  'bg-yellow-100 text-yellow-800'}`}>
+                                {submission.status}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {submission.fileUrl && submission.fileUrl !== "no-file-uploaded" && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => window.open(submission.fileUrl, "_blank")}
+                                >
+                                  View File
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                <div className="flex items-center justify-end space-x-2 py-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormsPage((p) => Math.max(1, p - 1))}
+                    disabled={formsPage === 1 || formsLoading}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <div className="text-sm font-medium">
+                    Page {formsPage} of {formsTotalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormsPage((p) => Math.min(formsTotalPages, p + 1))}
+                    disabled={formsPage === formsTotalPages || formsLoading}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
             )}
           </section>
         </TabsContent>
       </Tabs>
 
-      {/* Edit Material Dialog */}
+      {/* Dialogs (Keep existing) */}
       <Dialog open={!!editMaterial} onOpenChange={(open) => !open && setEditMaterial(null)}>
+        {/* ... Edit Material Dialog Content ... */}
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Learning Material</DialogTitle>
-            <DialogDescription>Update the material information</DialogDescription>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Edit Learning Material</DialogTitle><DialogDescription>Update the material information</DialogDescription></DialogHeader>
           {editMaterial && (
             <form onSubmit={handleUpdateMaterial} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="edit-mat-level">Level *</Label>
-                  <Select 
-                    value={editMaterial.level} 
-                    onValueChange={(value) => setEditMaterial({ ...editMaterial, level: value as Level })} 
-                    required
-                  >
-                    <SelectTrigger id="edit-mat-level">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LEVELS.map((level) => (
-                        <SelectItem key={level.value} value={level.value}>
-                          {level.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={editMaterial.level} onValueChange={(value) => setEditMaterial({ ...editMaterial, level: value as Level })} required>
+                    <SelectTrigger id="edit-mat-level"><SelectValue /></SelectTrigger>
+                    <SelectContent>{LEVELS.map((level) => (<SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-mat-subject">Subject *</Label>
-                  <Select 
-                    value={editMaterial.subject} 
-                    onValueChange={(value) => setEditMaterial({ ...editMaterial, subject: value as Subject })} 
-                    required
-                  >
-                    <SelectTrigger id="edit-mat-subject">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUBJECTS.map((subject) => (
-                        <SelectItem key={subject.value} value={subject.value}>
-                          {subject.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={editMaterial.subject} onValueChange={(value) => setEditMaterial({ ...editMaterial, subject: value as Subject })} required>
+                    <SelectTrigger id="edit-mat-subject"><SelectValue /></SelectTrigger>
+                    <SelectContent>{SUBJECTS.map((subject) => (<SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-mat-title">Title *</Label>
-                <Input
-                  id="edit-mat-title"
-                  name="title"
-                  defaultValue={editMaterial.title}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-mat-description">Description *</Label>
-                <Textarea
-                  id="edit-mat-description"
-                  name="description"
-                  defaultValue={editMaterial.description}
-                  rows={4}
-                  required
-                />
-              </div>
+              <div className="space-y-2"><Label htmlFor="edit-mat-title">Title *</Label><Input id="edit-mat-title" name="title" defaultValue={editMaterial.title} required /></div>
+              <div className="space-y-2"><Label htmlFor="edit-mat-description">Description *</Label><Textarea id="edit-mat-description" name="description" defaultValue={editMaterial.description} rows={4} required /></div>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-mat-video">Video URL</Label>
-                  <Input
-                    id="edit-mat-video"
-                    name="videoUrl"
-                    type="url"
-                    defaultValue={editMaterial.videoUrl || ""}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-mat-file">File URL</Label>
-                  <Input
-                    id="edit-mat-file"
-                    name="fileUrl"
-                    type="url"
-                    defaultValue={editMaterial.fileUrl || ""}
-                  />
-                </div>
+                <div className="space-y-2"><Label htmlFor="edit-mat-video">Video URL</Label><Input id="edit-mat-video" name="videoUrl" type="url" defaultValue={editMaterial.videoUrl || ""} /></div>
+                <div className="space-y-2"><Label htmlFor="edit-mat-file">File URL</Label><Input id="edit-mat-file" name="fileUrl" type="url" defaultValue={editMaterial.fileUrl || ""} /></div>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditMaterial(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
+              <DialogFooter><Button type="button" variant="outline" onClick={() => setEditMaterial(null)}>Cancel</Button><Button type="submit">Save Changes</Button></DialogFooter>
             </form>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Edit Assignment Dialog */}
       <Dialog open={!!editAssignment} onOpenChange={(open) => !open && setEditAssignment(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Assignment</DialogTitle>
-            <DialogDescription>Update the assignment information</DialogDescription>
-          </DialogHeader>
+        {/* ... Edit Assignment Dialog Content ... */}
+         <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Edit Assignment</DialogTitle><DialogDescription>Update the assignment information</DialogDescription></DialogHeader>
           {editAssignment && (
             <form onSubmit={handleUpdateAssignment} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="edit-assign-level">Level *</Label>
-                  <Select 
-                    value={editAssignment.level} 
-                    onValueChange={(value) => setEditAssignment({ ...editAssignment, level: value as Level })} 
-                    required
-                  >
-                    <SelectTrigger id="edit-assign-level">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LEVELS.map((level) => (
-                        <SelectItem key={level.value} value={level.value}>
-                          {level.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={editAssignment.level} onValueChange={(value) => setEditAssignment({ ...editAssignment, level: value as Level })} required>
+                    <SelectTrigger id="edit-assign-level"><SelectValue /></SelectTrigger>
+                    <SelectContent>{LEVELS.map((level) => (<SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-assign-subject">Subject *</Label>
-                  <Select 
-                    value={editAssignment.subject} 
-                    onValueChange={(value) => setEditAssignment({ ...editAssignment, subject: value as Subject })} 
-                    required
-                  >
-                    <SelectTrigger id="edit-assign-subject">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUBJECTS.map((subject) => (
-                        <SelectItem key={subject.value} value={subject.value}>
-                          {subject.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={editAssignment.subject} onValueChange={(value) => setEditAssignment({ ...editAssignment, subject: value as Subject })} required>
+                    <SelectTrigger id="edit-assign-subject"><SelectValue /></SelectTrigger>
+                    <SelectContent>{SUBJECTS.map((subject) => (<SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>))}</SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-assign-title">Title *</Label>
-                <Input
-                  id="edit-assign-title"
-                  name="title"
-                  defaultValue={editAssignment.title}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-assign-description">Description *</Label>
-                <Textarea
-                  id="edit-assign-description"
-                  name="description"
-                  defaultValue={editAssignment.description}
-                  rows={4}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-assign-due">Due Date *</Label>
-                <Input
-                  id="edit-assign-due"
-                  name="dueDate"
-                  type="date"
-                  defaultValue={new Date(editAssignment.dueDate).toISOString().split("T")[0]}
-                  required
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setEditAssignment(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
+              <div className="space-y-2"><Label htmlFor="edit-assign-title">Title *</Label><Input id="edit-assign-title" name="title" defaultValue={editAssignment.title} required /></div>
+              <div className="space-y-2"><Label htmlFor="edit-assign-description">Description *</Label><Textarea id="edit-assign-description" name="description" defaultValue={editAssignment.description} rows={4} required /></div>
+              <div className="space-y-2"><Label htmlFor="edit-assign-due">Due Date *</Label><Input id="edit-assign-due" name="dueDate" type="date" defaultValue={new Date(editAssignment.dueDate).toISOString().split("T")[0]} required /></div>
+              <DialogFooter><Button type="button" variant="outline" onClick={() => setEditAssignment(null)}>Cancel</Button><Button type="submit">Save Changes</Button></DialogFooter>
             </form>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Add Grade Dialog */}
       <Dialog open={gradeDialog} onOpenChange={setGradeDialog}>
+        {/* ... Add Grade Dialog Content ... */}
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Grade</DialogTitle>
-            <DialogDescription>Assign a grade to a student for an assignment</DialogDescription>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add Grade</DialogTitle><DialogDescription>Assign a grade to a student for an assignment</DialogDescription></DialogHeader>
           <form onSubmit={handleSubmitGrade} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="grade-student">Student *</Label>
               <Select value={selectedStudent} onValueChange={setSelectedStudent} required>
-                <SelectTrigger id="grade-student">
-                  <SelectValue placeholder="Select student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name} ({LEVELS.find((l) => l.value === student.level)?.label})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectTrigger id="grade-student"><SelectValue placeholder="Select student" /></SelectTrigger>
+                <SelectContent>{students.map((student) => (<SelectItem key={student.id} value={student.id}>{student.name} ({LEVELS.find((l) => l.value === student.level)?.label})</SelectItem>))}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="grade-level-filter-dialog">Filter by Level (optional)</Label>
-              <Select 
-                value={gradesLevelFilter} 
-                onValueChange={(value) => {
-                  setGradesLevelFilter(value as Level | "all");
-                  // Reset student selection when level changes
-                  if (selectedStudent) {
-                    const student = students.find(s => s.id === selectedStudent);
-                    if (student && value !== "all" && student.level !== value) {
-                      setSelectedStudent("");
-                    }
-                  }
-                }}
-              >
-                <SelectTrigger id="grade-level-filter-dialog">
-                  <SelectValue placeholder="All Levels" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
-                  {LEVELS.map((level) => (
-                    <SelectItem key={level.value} value={level.value}>
-                      {level.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+              <Select value={gradesLevelFilter} onValueChange={(value) => { setGradesLevelFilter(value as Level | "all"); if (selectedStudent) { const student = students.find(s => s.id === selectedStudent); if (student && value !== "all" && student.level !== value) setSelectedStudent(""); } }}>
+                <SelectTrigger id="grade-level-filter-dialog"><SelectValue placeholder="All Levels" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All Levels</SelectItem>{LEVELS.map((level) => (<SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>))}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="grade-assignment">Assignment *</Label>
               <Select value={selectedAssignment} onValueChange={setSelectedAssignment} required>
-                <SelectTrigger id="grade-assignment">
-                  <SelectValue placeholder="Select assignment" />
-                </SelectTrigger>
-                <SelectContent>
-                  {assignments.map((assignment) => (
-                    <SelectItem key={assignment.id} value={assignment.id}>
-                      {assignment.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectTrigger id="grade-assignment"><SelectValue placeholder="Select assignment" /></SelectTrigger>
+                <SelectContent>{assignments.map((assignment) => (<SelectItem key={assignment.id} value={assignment.id}>{assignment.title}</SelectItem>))}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="grade-score">Score *</Label>
-                <Input
-                  id="grade-score"
-                  name="score"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={gradeScore}
-                  onChange={(e) => setGradeScore(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="grade-max">Max Score</Label>
-                <Input
-                  id="grade-max"
-                  name="maxScore"
-                  type="number"
-                  value={gradeMaxScore}
-                  onChange={(e) => setGradeMaxScore(e.target.value)}
-                  min="0"
-                />
-              </div>
+              <div className="space-y-2"><Label htmlFor="grade-score">Score *</Label><Input id="grade-score" name="score" type="number" step="0.1" min="0" value={gradeScore} onChange={(e) => setGradeScore(e.target.value)} required /></div>
+              <div className="space-y-2"><Label htmlFor="grade-max">Max Score</Label><Input id="grade-max" name="maxScore" type="number" value={gradeMaxScore} onChange={(e) => setGradeMaxScore(e.target.value)} min="0" /></div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="grade-feedback">Feedback</Label>
-              <Textarea
-                id="grade-feedback"
-                name="feedback"
-                rows={3}
-                value={gradeFeedback}
-                onChange={(e) => setGradeFeedback(e.target.value)}
-                placeholder="Optional feedback for the student..."
-              />
-            </div>
+            <div className="space-y-2"><Label htmlFor="grade-feedback">Feedback</Label><Textarea id="grade-feedback" name="feedback" rows={3} value={gradeFeedback} onChange={(e) => setGradeFeedback(e.target.value)} placeholder="Optional feedback for the student..." /></div>
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => {
-                  setGradeDialog(false);
-                  setSelectedStudent("");
-                  setSelectedAssignment("");
-                  setGradeScore("");
-                  setGradeMaxScore("100");
-                  setGradeFeedback("");
-                }}
-              >
-                Cancel
-              </Button>
+              <Button type="button" variant="outline" onClick={() => { setGradeDialog(false); setSelectedStudent(""); setSelectedAssignment(""); setGradeScore(""); setGradeMaxScore("100"); setGradeFeedback(""); }}>Cancel</Button>
               <Button type="submit">Submit Grade</Button>
             </DialogFooter>
           </form>
@@ -1252,4 +906,3 @@ export default function TeacherDashboardClient({
     </div>
   );
 }
-

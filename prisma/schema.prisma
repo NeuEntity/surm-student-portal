@@ -95,6 +95,23 @@ model users {
   grades             grades[]
   learning_materials learning_materials[]
   submissions        submissions[]
+  className          String?
+  teacherRoles       String[]             @default([])
+  classesTaught      String[]             @default([])
+  employmentType     EmploymentType?
+}
+
+model audit_logs {
+  id        String   @id
+  action    String
+  targetId  String
+  targetType String
+  actorId   String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([targetId])
+  @@index([actorId])
 }
 
 enum Level {
@@ -134,5 +151,13 @@ enum SubmissionStatus {
 enum SubmissionType {
   MEDICAL_CERT
   EARLY_DISMISSAL
+  LETTERS
   ASSIGNMENT
+  ANNUAL_LEAVE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PERMANENT_PART_TIME
+  PART_TIME
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Level, Subject } from "@prisma/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BookOpen, FileText, Upload, Calendar, Video, File, AlertCircle, GraduationCap, Plus, Play, ExternalLink, Maximize2, X } from "lucide-react";
 import { format } from "date-fns";
 import { LogoutButton } from "@/components/logout-button";
+import { validateICNumber, validateRequiredText, validateDateParts } from "@/lib/validation";
 
 type MaterialAttachment = {
   url: string;
@@ -135,14 +136,22 @@ export default function StudentDashboard({
   const [dismissalForm, setDismissalForm] = useState({
     fullName: userName,
     class: level.replace("SECONDARY_", "Secondary "),
+    parentName: "",
+    icNumber: "",
     day: "",
     month: "",
     year: "",
     time: "",
     ampm: "AM",
     reason: "",
+    transport: "",
     file: null as File | null,
   });
+  const [dismissalErrors, setDismissalErrors] = useState<Record<string, string>>({});
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const signatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = useRef<boolean>(false);
+  const [hasSignature, setHasSignature] = useState(false);
   
   const [uploadingFormType, setUploadingFormType] = useState<"MEDICAL_CERT" | "EARLY_DISMISSAL" | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<string | null>(null);
@@ -213,20 +222,56 @@ export default function StudentDashboard({
       // Upload file if provided
       let fileUrl = "";
       if (file) {
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+          const errorMsg = "File size exceeds 5MB limit";
+          setUploadMessage(errorMsg);
+          if (assignmentId) {
+            setAssignmentErrors((prev) => ({ ...prev, [assignmentId]: errorMsg }));
+          }
+          setUploading(false);
+          setUploadingAssignmentId(null);
+          setUploadingFormType(null);
+          return;
+        }
         const uploadFormData = new FormData();
         uploadFormData.append("file", file);
 
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: uploadFormData,
+        const uploadUrl = "/api/upload";
+        const xhr = new XMLHttpRequest();
+        const uploadPromise = new Promise<string>((resolve, reject) => {
+          xhr.open("POST", uploadUrl, true);
+          xhr.upload.onprogress = (evt) => {
+            if (evt.lengthComputable) {
+              const percent = Math.round((evt.loaded / evt.total) * 100);
+              setUploadProgress(percent);
+            }
+          };
+          xhr.onreadystatechange = () => {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                  const resp = JSON.parse(xhr.responseText);
+                  resolve(resp.fileUrl);
+                } catch (e) {
+                  reject(new Error("Invalid upload response"));
+                }
+              } else {
+                try {
+                  const err = JSON.parse(xhr.responseText);
+                  reject(new Error(err.error || "File upload failed"));
+                } catch {
+                  reject(new Error("File upload failed"));
+                }
+              }
+            }
+          };
+          xhr.onerror = () => reject(new Error("Network error during upload"));
+          const form = new FormData();
+          form.append("file", file);
+          xhr.send(form);
         });
-
-        if (!uploadRes.ok) {
-          throw new Error("File upload failed");
-        }
-
-        const uploadData = await uploadRes.json();
-        fileUrl = uploadData.fileUrl;
+        fileUrl = await uploadPromise;
       }
 
       // Create submission
@@ -269,12 +314,15 @@ export default function StudentDashboard({
         setDismissalForm({
           fullName: userName,
           class: level.replace("SECONDARY_", "Secondary "),
+          parentName: "",
+          icNumber: "",
           day: "",
           month: "",
           year: "",
           time: "",
           ampm: "AM",
           reason: "",
+          transport: "",
           file: null,
         });
       }
@@ -312,20 +360,45 @@ export default function StudentDashboard({
     setUploadingFormType("MEDICAL_CERT");
     
     try {
-      // Upload file
-      const uploadFormData = new FormData();
-      uploadFormData.append("file", medicalForm.file);
-
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: uploadFormData,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error("File upload failed");
+      const file = medicalForm.file!;
+      const MAX_FILE_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error("File size exceeds 5MB limit");
       }
-
-      const { fileUrl } = await uploadRes.json();
+      const uploadUrl = "/api/upload";
+      const xhr = new XMLHttpRequest();
+      const fileUrl = await new Promise<string>((resolve, reject) => {
+        xhr.open("POST", uploadUrl, true);
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            const percent = Math.round((evt.loaded / evt.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const resp = JSON.parse(xhr.responseText);
+                resolve(resp.fileUrl);
+              } catch (e) {
+                reject(new Error("Invalid upload response"));
+              }
+            } else {
+              try {
+                const err = JSON.parse(xhr.responseText);
+                reject(new Error(err.error || "File upload failed"));
+              } catch {
+                reject(new Error("File upload failed"));
+              }
+            }
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        const form = new FormData();
+        form.append("file", file);
+        xhr.send(form);
+      });
 
       const metadata = {
         fullName: medicalForm.fullName,
@@ -334,7 +407,6 @@ export default function StudentDashboard({
         reason: medicalForm.reason,
       };
 
-      // Create submission
       const submissionRes = await fetch("/api/submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -375,8 +447,16 @@ export default function StudentDashboard({
   async function handleEarlyDismissalSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     
-    if (!dismissalForm.fullName || !dismissalForm.class || !dismissalForm.day || 
-        !dismissalForm.month || !dismissalForm.year || !dismissalForm.time || !dismissalForm.reason) {
+    const fieldErrors: Record<string, string> = {};
+    if (!validateRequiredText(dismissalForm.parentName)) fieldErrors.parentName = "Parent name is required";
+    if (!validateRequiredText(dismissalForm.fullName)) fieldErrors.fullName = "Student name is required";
+    if (!validateRequiredText(dismissalForm.class)) fieldErrors.class = "Class is required";
+    const dateValid = validateDateParts(dismissalForm.day, dismissalForm.month, dismissalForm.year);
+    if (!dateValid) fieldErrors.date = "Invalid date";
+    if (!validateRequiredText(dismissalForm.reason)) fieldErrors.reason = "Reason is required";
+    if (!validateICNumber(dismissalForm.icNumber)) fieldErrors.icNumber = "Invalid IC number format";
+    if (Object.keys(fieldErrors).length > 0) {
+      setDismissalErrors(fieldErrors);
       setUploadMessage("Please fill in all required fields");
       return;
     }
@@ -388,22 +468,80 @@ export default function StudentDashboard({
     try {
       let fileUrl = "";
       
-      // Upload file if provided (optional for early dismissal)
       if (dismissalForm.file) {
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        if (dismissalForm.file.size > MAX_FILE_SIZE) {
+          throw new Error("File size exceeds 5MB limit");
+        }
         const uploadFormData = new FormData();
         uploadFormData.append("file", dismissalForm.file);
 
-        const uploadRes = await fetch("/api/upload", {
-          method: "POST",
-          body: uploadFormData,
+        const xhrFile = new XMLHttpRequest();
+        fileUrl = await new Promise<string>((resolve, reject) => {
+          xhrFile.open("POST", "/api/upload", true);
+          xhrFile.upload.onprogress = (evt) => {
+            if (evt.lengthComputable) {
+              const percent = Math.round((evt.loaded / evt.total) * 100);
+              setUploadProgress(percent);
+            }
+          };
+          xhrFile.onreadystatechange = () => {
+            if (xhrFile.readyState === XMLHttpRequest.DONE) {
+              if (xhrFile.status >= 200 && xhrFile.status < 300) {
+                try {
+                  const resp = JSON.parse(xhrFile.responseText);
+                  resolve(resp.fileUrl);
+                } catch {
+                  reject(new Error("Invalid upload response"));
+                }
+              } else {
+                try {
+                  const err = JSON.parse(xhrFile.responseText);
+                  reject(new Error(err.error || "File upload failed"));
+                } catch {
+                  reject(new Error("File upload failed"));
+                }
+              }
+            }
+          };
+          xhrFile.onerror = () => reject(new Error("Network error during upload"));
+          xhrFile.send(uploadFormData);
         });
-
-        if (!uploadRes.ok) {
-          throw new Error("File upload failed");
-        }
-
-        const uploadData = await uploadRes.json();
-        fileUrl = uploadData.fileUrl;
+      }
+      
+      let signatureUrl = "";
+      if (signatureCanvasRef.current && hasSignature) {
+        const blob: Blob = await new Promise((resolve) => {
+          signatureCanvasRef.current!.toBlob((b) => resolve(b as Blob), "image/png");
+        });
+        const form = new FormData();
+        const sigBlob = new Blob([blob], { type: "image/png" });
+        form.append("file", sigBlob, "signature.png");
+        const xhrSig = new XMLHttpRequest();
+        signatureUrl = await new Promise<string>((resolve, reject) => {
+          xhrSig.open("POST", "/api/upload", true);
+          xhrSig.onreadystatechange = () => {
+            if (xhrSig.readyState === XMLHttpRequest.DONE) {
+              if (xhrSig.status >= 200 && xhrSig.status < 300) {
+                try {
+                  const resp = JSON.parse(xhrSig.responseText);
+                  resolve(resp.fileUrl);
+                } catch {
+                  reject(new Error("Invalid upload response"));
+                }
+              } else {
+                try {
+                  const err = JSON.parse(xhrSig.responseText);
+                  reject(new Error(err.error || "Signature upload failed"));
+                } catch {
+                  reject(new Error("Signature upload failed"));
+                }
+              }
+            }
+          };
+          xhrSig.onerror = () => reject(new Error("Network error during upload"));
+          xhrSig.send(form);
+        });
       }
       
       const dateTime = `${dismissalForm.year}-${dismissalForm.month.padStart(2, "0")}-${dismissalForm.day.padStart(2, "0")} ${dismissalForm.time} ${dismissalForm.ampm}`;
@@ -411,6 +549,8 @@ export default function StudentDashboard({
       const metadata = {
         fullName: dismissalForm.fullName,
         class: dismissalForm.class,
+        parentName: dismissalForm.parentName,
+        icNumber: dismissalForm.icNumber,
         date: dismissalForm.day,
         month: dismissalForm.month,
         year: dismissalForm.year,
@@ -418,9 +558,10 @@ export default function StudentDashboard({
         ampm: dismissalForm.ampm,
         dateTime: dateTime,
         reason: dismissalForm.reason,
+        transport: dismissalForm.transport || "",
+        signatureUrl: signatureUrl || "",
       };
       
-      // Create submission (file is optional for early dismissal)
       const submissionRes = await fetch("/api/submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -436,20 +577,36 @@ export default function StudentDashboard({
         throw new Error(error.error || "Submission failed");
       }
 
-      setUploadMessage("Early dismissal form submitted successfully!");
+      const submissionData = await submissionRes.json();
+      const pdfRes = await fetch("/api/early-dismissal/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId: submissionData.id }),
+      });
+      let pdfMessage = "";
+      if (pdfRes.ok) {
+        const pdfData = await pdfRes.json();
+        pdfMessage = pdfData?.pdfUrl ? ` PDF generated: ${pdfData.pdfUrl}` : "";
+      }
+
+      setUploadMessage(`Early dismissal form submitted successfully!${pdfMessage}`);
       
       // Reset form
       setDismissalForm({
         fullName: userName,
         class: level.replace("SECONDARY_", "Secondary "),
+        parentName: "",
+        icNumber: "",
         day: "",
         month: "",
         year: "",
         time: "",
         ampm: "AM",
         reason: "",
+        transport: "",
         file: null,
       });
+      clearSignature();
       
       setTimeout(() => {
         window.location.reload();
@@ -467,6 +624,15 @@ export default function StudentDashboard({
     assignmentId: string
   ) {
     await handleFileUpload(event, "ASSIGNMENT", assignmentId);
+  }
+  
+  function clearSignature() {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
   }
 
   const levelName = level.replace("_", " ").replace("SECONDARY", "Secondary");
@@ -1148,19 +1314,37 @@ export default function StudentDashboard({
             )}
           </TabsContent>
 
-          <TabsContent value="uploads" className="space-y-4 sm:space-y-6">
-            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-              {/* Medical Certificate Form */}
-              <section className="rounded-2xl bg-white p-4 sm:p-6 lg:p-8 border border-gray-200">
-                <h3 className="text-xl sm:text-2xl font-serif font-bold text-[var(--surm-text-dark)] mb-4 sm:mb-6">
-                  Medical Certification
-                </h3>
+          <TabsContent value="uploads" className="space-y-6 sm:space-y-8 animate-in fade-in-50 duration-500">
+            <Tabs defaultValue="medical" className="w-full space-y-8">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-serif font-semibold text-[var(--surm-text-dark)]">Submit Request</h2>
+                  <p className="text-sm text-[var(--surm-text-dark)]/70 font-sans max-w-md mx-auto">
+                    Select the form type below to proceed with your request.
+                  </p>
+                </div>
+                <TabsList className="grid w-full max-w-md grid-cols-2 bg-[var(--surm-beige)] p-1 rounded-full">
+                  <TabsTrigger value="medical" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm">Medical Certificate</TabsTrigger>
+                  <TabsTrigger value="dismissal" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm">Early Dismissal</TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="medical" className="mt-0 focus-visible:outline-none">
+                <div className="max-w-3xl mx-auto">
+                  {/* Medical Certificate Form */}
+                  <section className="rounded-3xl bg-white p-5 sm:p-6 lg:p-8 border border-[var(--surm-green)]/10 shadow-sm hover:shadow-md transition-all duration-300">
+                <div className="flex items-center gap-3 mb-5 sm:mb-6">
+                  <div className="h-8 w-1.5 rounded-full bg-[var(--surm-accent)]"></div>
+                  <h3 className="text-2xl sm:text-3xl font-serif font-bold text-[var(--surm-text-dark)]">
+                    Medical Certification
+                  </h3>
+                </div>
                 <form
                   onSubmit={handleMedicalCertSubmit}
                   className="space-y-4 sm:space-y-5"
                 >
                   <div>
-                    <Label htmlFor="medical-full-name" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
+                    <Label htmlFor="medical-full-name" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
                       Full Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -1169,13 +1353,13 @@ export default function StudentDashboard({
                       value={medicalForm.fullName}
                       onChange={(e) => setMedicalForm({ ...medicalForm, fullName: e.target.value })}
                       disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
-                      className="bg-white border-gray-300"
+                      className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="medical-class" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
+                    <Label htmlFor="medical-class" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
                       Class <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -1184,31 +1368,31 @@ export default function StudentDashboard({
                       value={medicalForm.class}
                       onChange={(e) => setMedicalForm({ ...medicalForm, class: e.target.value })}
                       disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
-                      className="bg-white border-gray-300"
+                      className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="medical-date" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
+                    <Label htmlFor="medical-date" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
                       Date <span className="text-red-500">*</span>
                     </Label>
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[var(--surm-green)]/60" />
                       <Input
                         id="medical-date"
                         type="date"
                         value={medicalForm.date}
                         onChange={(e) => setMedicalForm({ ...medicalForm, date: e.target.value })}
                         disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
-                        className="bg-white border-gray-300 pl-10"
+                        className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] pl-12 h-12 text-base"
                         required
                       />
                     </div>
                   </div>
                   
                   <div>
-                    <Label htmlFor="medical-reason" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
+                    <Label htmlFor="medical-reason" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
                       Reason for MC <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
@@ -1216,14 +1400,14 @@ export default function StudentDashboard({
                       value={medicalForm.reason}
                       onChange={(e) => setMedicalForm({ ...medicalForm, reason: e.target.value })}
                       disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
-                      className="min-h-[100px] bg-white border-gray-300"
+                      className="min-h-[120px] bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] text-base resize-none"
                       placeholder="Please provide the reason for medical certification"
                       required
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="medical-file" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
+                    <Label htmlFor="medical-file" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
                       Upload your Medical Certification <span className="text-red-500">*</span>
                     </Label>
                     <div className="relative">
@@ -1239,83 +1423,159 @@ export default function StudentDashboard({
                       />
                       <label
                         htmlFor="medical-file"
-                        className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
+                        className={`flex flex-col items-center justify-center gap-3 w-full px-6 py-8 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-300 ${
                           !canUploadMore || uploadingFormType === "MEDICAL_CERT"
-                            ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                            : "bg-white border-gray-300 hover:border-[var(--surm-accent)] hover:bg-gray-50"
+                            ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-70"
+                            : "bg-[var(--surm-paper)] border-[var(--surm-green)]/30 hover:border-[var(--surm-accent)] hover:bg-[var(--surm-beige)]/10"
                         }`}
                       >
-                        <Plus className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
-                          {medicalForm.file ? medicalForm.file.name : "Upload File"}
-                        </span>
+                        <div className={`p-3 rounded-full ${
+                          !canUploadMore || uploadingFormType === "MEDICAL_CERT"
+                            ? "bg-gray-100"
+                            : "bg-[var(--surm-green)]/5 text-[var(--surm-green)]"
+                        }`}>
+                          <Upload className="w-6 h-6" />
+                        </div>
+                        <div className="text-center">
+                          <span className="text-base font-semibold text-[var(--surm-text-dark)] block mb-1">
+                            {medicalForm.file ? medicalForm.file.name : "Click to upload file"}
+                          </span>
+                          <span className="text-sm text-[var(--surm-text-dark)]/60">
+                            PDF, JPG, PNG (Max 5MB)
+                          </span>
+                        </div>
                       </label>
+                      {uploadProgress > 0 && uploadingFormType === "MEDICAL_CERT" && (
+                        <div className="mt-4 w-full bg-[var(--surm-green)]/10 rounded-full h-2.5 overflow-hidden">
+                          <div
+                            className="bg-[var(--surm-green)] h-full rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                            aria-valuenow={uploadProgress}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                   
                   <Button
                     type="submit"
                     disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
-                    className="w-full rounded-lg bg-black text-white hover:bg-gray-800 py-4 sm:py-6 text-sm sm:text-base font-medium"
+                    className="w-full rounded-xl bg-[#0F2C18] text-white hover:bg-[#0F2C18]/90 py-6 text-base font-medium shadow-md hover:shadow-lg transition-all duration-300 border-0"
                   >
-                    {uploadingFormType === "MEDICAL_CERT" ? "Submitting..." : "Submit"}
+                    {uploadingFormType === "MEDICAL_CERT" ? "Submitting..." : "Submit Application"}
                   </Button>
                 </form>
-              </section>
+                  </section>
+                </div>
+              </TabsContent>
 
-              {/* Early Dismissal Form */}
-              <section className="rounded-2xl bg-white p-4 sm:p-6 lg:p-8 border border-gray-200">
-                <h3 className="text-xl sm:text-2xl font-serif font-bold text-[var(--surm-text-dark)] mb-4 sm:mb-6">
-                  Early Dismissal Form
-                </h3>
+              <TabsContent value="dismissal" className="mt-0 focus-visible:outline-none">
+                <div className="max-w-3xl mx-auto">
+                  {/* Early Dismissal Form */}
+                  <section className="rounded-3xl bg-white p-5 sm:p-6 lg:p-8 border border-[var(--surm-green)]/10 shadow-sm hover:shadow-md transition-all duration-300">
+                <div className="flex items-center gap-3 mb-5 sm:mb-6">
+                  <div className="h-8 w-1.5 rounded-full bg-[var(--surm-accent)]"></div>
+                  <h3 className="text-2xl sm:text-3xl font-serif font-bold text-[var(--surm-text-dark)]">
+                    Early Dismissal Form
+                  </h3>
+                </div>
                 <form
                   onSubmit={handleEarlyDismissalSubmit}
-                  className="space-y-4 sm:space-y-5"
+                  className="space-y-5 sm:space-y-6"
                 >
                   <div>
-                    <Label htmlFor="dismissal-full-name" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
-                      Full Name <span className="text-red-500">*</span>
+                    <Label htmlFor="dismissal-parent-name" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                      Parent Full Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="dismissal-parent-name"
+                      type="text"
+                      aria-label="Parent Full Name"
+                      value={dismissalForm.parentName}
+                      onChange={(e) => setDismissalForm({ ...dismissalForm, parentName: e.target.value })}
+                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
+                      required
+                    />
+                    {dismissalErrors.parentName && (
+                      <p className="text-xs text-red-600 mt-1 font-medium">{dismissalErrors.parentName}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="dismissal-full-name" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                      Student Full Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="dismissal-full-name"
                       type="text"
+                      aria-label="Student Full Name"
                       value={dismissalForm.fullName}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, fullName: e.target.value })}
                       disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
-                      className="bg-white border-gray-300"
+                      className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
+                    {dismissalErrors.fullName && (
+                      <p className="text-xs text-red-600 mt-1 font-medium">{dismissalErrors.fullName}</p>
+                    )}
                   </div>
                   
                   <div>
-                    <Label htmlFor="dismissal-class" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
+                    <Label htmlFor="dismissal-ic-number" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                      IC Number <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="dismissal-ic-number"
+                      type="text"
+                      aria-label="IC Number"
+                      placeholder="e.g. 123456-78-9012 or 123456789012"
+                      value={dismissalForm.icNumber}
+                      onChange={(e) => setDismissalForm({ ...dismissalForm, icNumber: e.target.value })}
+                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
+                      required
+                    />
+                    {dismissalErrors.icNumber && (
+                      <p className="text-xs text-red-600 mt-1 font-medium">{dismissalErrors.icNumber}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="dismissal-class" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
                       Class <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="dismissal-class"
                       type="text"
+                      aria-label="Class"
                       value={dismissalForm.class}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, class: e.target.value })}
                       disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
-                      className="bg-white border-gray-300"
+                      className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
+                    {dismissalErrors.class && (
+                      <p className="text-xs text-red-600 mt-1 font-medium">{dismissalErrors.class}</p>
+                    )}
                   </div>
                   
                   <div>
-                    <Label className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
+                    <Label className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
                       Date and time <span className="text-red-500">*</span>
                     </Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
                       <Input
                         type="number"
                         placeholder="Day"
                         min="1"
                         max="31"
+                        aria-label="Day"
                         value={dismissalForm.day}
                         onChange={(e) => setDismissalForm({ ...dismissalForm, day: e.target.value })}
                         disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
-                        className="bg-white border-gray-300"
+                        className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                         required
                       />
                       <Select
@@ -1323,7 +1583,7 @@ export default function StudentDashboard({
                         onValueChange={(value) => setDismissalForm({ ...dismissalForm, month: value })}
                         disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
                       >
-                        <SelectTrigger className="bg-white border-gray-300">
+                        <SelectTrigger className="bg-white border-[var(--surm-green)]/20 focus:ring-[var(--surm-accent)] h-12 text-base sm:col-span-2">
                           <SelectValue placeholder="Month" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1339,19 +1599,21 @@ export default function StudentDashboard({
                         placeholder="Year"
                         min="2024"
                         max="2100"
+                        aria-label="Year"
                         value={dismissalForm.year}
                         onChange={(e) => setDismissalForm({ ...dismissalForm, year: e.target.value })}
                         disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
-                        className="bg-white border-gray-300"
+                        className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                         required
                       />
-                      <div className="flex gap-1 col-span-2 sm:col-span-1">
+                      <div className="flex gap-1 col-span-2 sm:col-span-2 relative z-20">
                         <Input
                           type="time"
+                          aria-label="Time"
                           value={dismissalForm.time}
                           onChange={(e) => setDismissalForm({ ...dismissalForm, time: e.target.value })}
                           disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
-                          className="bg-white border-gray-300 flex-1"
+                          className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base flex-1"
                           required
                         />
                         <Select
@@ -1359,35 +1621,117 @@ export default function StudentDashboard({
                           onValueChange={(value) => setDismissalForm({ ...dismissalForm, ampm: value })}
                           disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
                         >
-                          <SelectTrigger className="w-16 sm:w-20 bg-white border-gray-300">
+                          <SelectTrigger className="w-16 sm:w-20 bg-white border-[var(--surm-green)]/20 focus:ring-[var(--surm-accent)] h-12 text-base z-30">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-50 bg-white border border-[var(--surm-green)]/20">
                             <SelectItem value="AM">AM</SelectItem>
                             <SelectItem value="PM">PM</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
+                      {dismissalErrors.date && (
+                        <p className="col-span-2 sm:col-span-4 text-xs text-red-600 mt-1 font-medium">{dismissalErrors.date}</p>
+                      )}
                     </div>
                   </div>
                   
                   <div>
-                    <Label htmlFor="dismissal-reason" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block">
+                    <Label htmlFor="dismissal-reason" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
                       Reason <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
                       id="dismissal-reason"
+                      aria-label="Reason"
                       value={dismissalForm.reason}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, reason: e.target.value })}
                       disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
-                      className="min-h-[100px] bg-white border-gray-300"
+                      className="min-h-[120px] bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] text-base resize-none"
                       placeholder="Please provide the reason for early dismissal"
                       required
+                    />
+                    {dismissalErrors.reason && (
+                      <p className="text-xs text-red-600 mt-1 font-medium">{dismissalErrors.reason}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="dismissal-transport" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                      Transport details <span className="text-[var(--surm-text-dark)]/50 text-sm font-normal ml-1">(optional)</span>
+                    </Label>
+                    <Textarea
+                      id="dismissal-transport"
+                      aria-label="Transport details"
+                      value={dismissalForm.transport}
+                      onChange={(e) => setDismissalForm({ ...dismissalForm, transport: e.target.value })}
+                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      className="min-h-[80px] bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] text-base resize-none"
+                      placeholder="E.g., Picked up by parent at gate"
                     />
                   </div>
                   
                   <div>
-                    <p className="text-sm text-[var(--surm-text-dark)]/70 mb-2 font-sans">
+                    <Label className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                      Digital Signature <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="bg-white border border-[var(--surm-green)]/20 rounded-xl p-4 shadow-inner">
+                      <canvas
+                        ref={signatureCanvasRef}
+                        aria-label="Signature Pad"
+                        className="w-full h-40 bg-[var(--surm-paper)] rounded-lg touch-none border border-dashed border-[var(--surm-green)]/20 cursor-crosshair"
+                        onPointerDown={(e) => {
+                          const canvas = signatureCanvasRef.current!;
+                          const rect = canvas.getBoundingClientRect();
+                          const ctx = canvas.getContext("2d")!;
+                          canvas.width = rect.width;
+                          canvas.height = rect.height;
+                          ctx.lineWidth = 2;
+                          ctx.lineCap = "round";
+                          ctx.strokeStyle = "#0F2C18"; // surm-green
+                          isDrawingRef.current = true;
+                          ctx.beginPath();
+                          ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+                        }}
+                        onPointerMove={(e) => {
+                          if (!isDrawingRef.current) return;
+                          const canvas = signatureCanvasRef.current!;
+                          const ctx = canvas.getContext("2d")!;
+                          ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+                          ctx.stroke();
+                          setHasSignature(true);
+                        }}
+                        onPointerUp={() => {
+                          isDrawingRef.current = false;
+                        }}
+                        onPointerLeave={() => {
+                          isDrawingRef.current = false;
+                        }}
+                      />
+                      <div className="mt-3 flex items-center justify-between">
+                        {!hasSignature ? (
+                          <p className="text-sm text-[var(--surm-text-dark)]/60 font-sans italic">Please sign in the box above</p>
+                        ) : (
+                          <p className="text-sm text-[var(--surm-accent)] font-sans font-medium">Signature captured</p>
+                        )}
+                        <Button
+                          type="button"
+                          aria-label="Clear signature"
+                          variant="outline"
+                          onClick={() => clearSignature()}
+                          disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                          className="text-xs h-8 border-[var(--surm-green)]/30 text-[var(--surm-green)] hover:bg-[var(--surm-green)]/5 hover:text-[var(--surm-green)]"
+                        >
+                          Clear Signature
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                      Supporting Documents
+                    </Label>
+                    <p className="text-sm text-[var(--surm-text-dark)]/70 mb-3 font-sans">
                       Please share any supporting documents related to your request.
                     </p>
                     <div className="relative">
@@ -1395,79 +1739,170 @@ export default function StudentDashboard({
                         id="dismissal-file"
                         name="file"
                         type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
                         onChange={(e) => setDismissalForm({ ...dismissalForm, file: e.target.files?.[0] || null })}
                         className="hidden"
                       />
                       <label
                         htmlFor="dismissal-file"
-                        className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
+                        className={`flex flex-col items-center justify-center gap-3 w-full px-6 py-8 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-300 ${
                           !canUploadMore || uploadingFormType === "EARLY_DISMISSAL"
-                            ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                            : "bg-white border-gray-300 hover:border-[var(--surm-accent)] hover:bg-gray-50"
+                            ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-70"
+                            : "bg-[var(--surm-paper)] border-[var(--surm-green)]/30 hover:border-[var(--surm-accent)] hover:bg-[var(--surm-beige)]/10"
                         }`}
                       >
-                        <Plus className="w-5 h-5 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-700">
-                          {dismissalForm.file ? dismissalForm.file.name : "Upload File"}
-                        </span>
+                        <div className={`p-3 rounded-full ${
+                          !canUploadMore || uploadingFormType === "EARLY_DISMISSAL"
+                            ? "bg-gray-100"
+                            : "bg-[var(--surm-green)]/5 text-[var(--surm-green)]"
+                        }`}>
+                          <Upload className="w-6 h-6" />
+                        </div>
+                        <div className="text-center">
+                          <span className="text-base font-semibold text-[var(--surm-text-dark)] block mb-1">
+                            {dismissalForm.file ? dismissalForm.file.name : "Click to upload file"}
+                          </span>
+                          <span className="text-sm text-[var(--surm-text-dark)]/60">
+                            PDF, Word, Images (Max 5MB)
+                          </span>
+                        </div>
                       </label>
+                      {uploadProgress > 0 && uploadingFormType === "EARLY_DISMISSAL" && (
+                        <div className="mt-4 w-full bg-[var(--surm-green)]/10 rounded-full h-2.5 overflow-hidden">
+                          <div
+                            className="bg-[var(--surm-green)] h-full rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                            aria-valuenow={uploadProgress}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                   
                   <Button
                     type="submit"
                     disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
-                    className="w-full rounded-lg bg-black text-white hover:bg-gray-800 py-4 sm:py-6 text-sm sm:text-base font-medium"
+                    className="w-full rounded-xl bg-[#0F2C18] text-white hover:bg-[#0F2C18]/90 py-6 text-base font-medium shadow-md hover:shadow-lg transition-all duration-300 border-0"
                   >
-                    {uploadingFormType === "EARLY_DISMISSAL" ? "Submitting..." : "Submit"}
+                    {uploadingFormType === "EARLY_DISMISSAL" ? "Submitting..." : "Submit Application"}
                   </Button>
                 </form>
-              </section>
-            </div>
+                  </section>
+                </div>
+              </TabsContent>
+            </Tabs>
 
             {uploadMessage && (
-              <section className={`rounded-2xl p-6 ${
+              <section className={`rounded-2xl p-6 flex items-start gap-4 animate-in slide-in-from-bottom-2 duration-300 ${
                 uploadMessage.includes("Error")
-                  ? "bg-red-50 border border-red-200"
-                  : "bg-[var(--surm-beige)]/30 border border-[var(--surm-beige)]"
+                  ? "bg-red-50 border border-red-100"
+                  : "bg-[var(--surm-green)] text-white shadow-lg"
               }`}>
-                <p className={`font-sans ${
-                  uploadMessage.includes("Error") ? "text-red-700" : "text-[var(--surm-accent)]"
-                }`}>
-                  {uploadMessage}
-                </p>
+                {uploadMessage.includes("Error") ? (
+                  <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
+                ) : (
+                  <div className="p-1 bg-white/20 rounded-full shrink-0">
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                )}
+                <div>
+                  <h4 className={`font-serif font-bold mb-1 ${
+                    uploadMessage.includes("Error") ? "text-red-800" : "text-white"
+                  }`}>
+                    {uploadMessage.includes("Error") ? "Submission Failed" : "Submission Successful"}
+                  </h4>
+                  <p className={`text-sm font-sans ${
+                    uploadMessage.includes("Error") ? "text-red-700" : "text-white/90"
+                  }`}>
+                    {uploadMessage}
+                  </p>
+                </div>
               </section>
             )}
 
-            {/* Upload Status - Beige Panel */}
-            <section className="rounded-2xl bg-[var(--surm-beige)] p-4 sm:p-6 lg:p-8">
-              <h3 className="text-lg sm:text-xl font-serif font-semibold text-[var(--surm-text-dark)] mb-2">
-                Upload Status
-              </h3>
-              <p className="text-sm text-[var(--surm-text-dark)]/80 mb-4 sm:mb-6 font-sans">
-                You have used {formSubmissions.length} out of 5 uploads for {currentYear}
-              </p>
+            {/* Letters Status - Beige Panel */}
+            <section className="rounded-3xl bg-[var(--surm-beige)] p-6 sm:p-8 lg:p-10 shadow-inner">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                <div>
+                  <h3 className="text-2xl font-serif font-bold text-[var(--surm-text-dark)] mb-2">
+                    Submission History
+                  </h3>
+                  <p className="text-[var(--surm-text-dark)]/80 font-sans">
+                    Track your recent medical certificates and early dismissal requests.
+                  </p>
+                </div>
+                <div className="bg-white/50 backdrop-blur-sm px-6 py-3 rounded-2xl border border-[var(--surm-text-dark)]/5">
+                  <p className="text-sm font-medium text-[var(--surm-text-dark)]/70 font-sans uppercase tracking-wider mb-1">
+                    Annual Limit
+                  </p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-serif font-bold text-[var(--surm-text-dark)]">
+                      {formSubmissions.length}
+                    </span>
+                    <span className="text-[var(--surm-text-dark)]/60 font-sans">
+                      / 5 used
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
               {!canUploadMore && (
-                <div className="flex items-center gap-2 p-4 bg-[var(--surm-beige)]/50 border border-[var(--surm-beige)] rounded-lg mb-4">
-                  <AlertCircle className="w-5 h-5 text-[var(--surm-text-dark)]/70" />
-                  <p className="text-sm text-[var(--surm-text-dark)] font-sans">
-                    You have reached the maximum upload limit (5 files)
+                <div className="flex items-center gap-3 p-4 bg-red-100/80 border border-red-200 rounded-xl mb-6 text-red-800">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <p className="text-sm font-sans font-medium">
+                    You have reached the maximum upload limit (5 files) for the year {currentYear}. Please contact administration for assistance.
                   </p>
                 </div>
               )}
-              {formSubmissions.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <h4 className="font-semibold text-sm text-[var(--surm-text-dark)] font-sans">Recent Uploads:</h4>
-                  <ul className="space-y-2">
+              
+              {formSubmissions.length > 0 ? (
+                <div className="bg-white/60 rounded-2xl overflow-hidden border border-[var(--surm-text-dark)]/5">
+                  <div className="grid grid-cols-1 divide-y divide-[var(--surm-text-dark)]/5">
                     {formSubmissions.map((sub) => (
-                      <li key={sub.id} className="text-sm text-[var(--surm-text-dark)]/70 flex items-center gap-2 font-sans">
-                        <File className="w-4 h-4" />
-                        {sub.type.replace("_", " ")} - {format(new Date(sub.createdAt), "PPP")}
-                      </li>
+                      <div key={sub.id} className="p-4 sm:p-5 hover:bg-white/80 transition-colors flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-3 rounded-full ${
+                            sub.type === "MEDICAL_CERT" 
+                              ? "bg-[var(--surm-accent)]/10 text-[var(--surm-accent)]" 
+                              : "bg-[var(--surm-green)]/10 text-[var(--surm-green)]"
+                          }`}>
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="font-serif font-semibold text-[var(--surm-text-dark)]">
+                              {sub.type === "MEDICAL_CERT" ? "Medical Certificate" : "Early Dismissal Form"}
+                            </p>
+                            <p className="text-sm text-[var(--surm-text-dark)]/60 font-sans mt-0.5">
+                              Submitted on {format(new Date(sub.createdAt), "PPP 'at' p")}
+                            </p>
+                          </div>
+                        </div>
+                        {sub.fileUrl && (
+                          <a 
+                            href={sub.fileUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-2 text-[var(--surm-text-dark)]/40 hover:text-[var(--surm-accent)] hover:bg-[var(--surm-accent)]/5 rounded-full transition-all"
+                            title="View Document"
+                          >
+                            <ExternalLink className="w-5 h-5" />
+                          </a>
+                        )}
+                      </div>
                     ))}
-                  </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 border-2 border-dashed border-[var(--surm-text-dark)]/10 rounded-2xl">
+                  <div className="inline-flex p-4 rounded-full bg-[var(--surm-text-dark)]/5 text-[var(--surm-text-dark)]/40 mb-3">
+                    <File className="w-8 h-8" />
+                  </div>
+                  <p className="text-[var(--surm-text-dark)]/60 font-sans">
+                    No submissions found for {currentYear}.
+                  </p>
                 </div>
               )}
             </section>

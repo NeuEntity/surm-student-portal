@@ -33,11 +33,20 @@ const LEVELS = [
 
 export default async function TeacherDashboardPage() {
   const session = await auth();
-  const user = session?.user as any;
-
-  if (!user || user.role !== "TEACHER") {
+  
+  if (!session?.user?.id) {
     redirect("/dashboard");
   }
+
+  // Use raw query to bypass Prisma validation error (EPERM on client generation)
+  const dbUsers = await prisma.$queryRaw<any[]>`SELECT * FROM "users" WHERE "id" = ${session.user.id}`;
+  const dbUser = dbUsers[0];
+
+  if (!dbUser || dbUser.role !== "TEACHER") {
+    redirect("/dashboard");
+  }
+
+  const user = dbUser;
 
   async function createMaterial(formData: FormData) {
     "use server";
@@ -261,26 +270,6 @@ export default async function TeacherDashboardPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Get form submissions (MEDICAL_CERT and EARLY_DISMISSAL) for teachers to view
-  const formSubmissions = await prisma.submissions.findMany({
-    where: {
-      type: {
-        in: [SubmissionType.MEDICAL_CERT, SubmissionType.EARLY_DISMISSAL],
-      },
-    },
-    include: {
-      users: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          level: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
   // Get assignment submissions for assignments created by this teacher
   const assignmentSubmissions = await prisma.submissions.findMany({
     where: {
@@ -361,8 +350,10 @@ export default async function TeacherDashboardPage() {
           initialAssignments={assignments}
           students={students as any}
           grades={grades}
-          formSubmissions={formSubmissions as any}
+          formSubmissions={[] as any} // Empty initial forms, client fetches
           assignmentSubmissions={assignmentSubmissions as any}
+          teacherRoles={user.teacherRoles}
+          classesTaught={user.classesTaught}
         />
       </div>
     </div>
