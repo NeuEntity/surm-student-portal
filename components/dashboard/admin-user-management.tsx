@@ -513,17 +513,7 @@ export default function AdminUserManagement({
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="edit-employment">Employment Type</Label>
-                        <Select name="employmentType" defaultValue={editingUser.employmentType || ""} required onValueChange={(value) => setSelectedEmploymentType(value)}>
-                            <SelectTrigger id="edit-employment"><SelectValue placeholder="Select type" /></SelectTrigger>
-                            <SelectContent>
-                                {EMPLOYMENT_TYPES.map((type) => (
-                                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+
                     <div className="space-y-2">
                         <Label>Classes Taught (Levels)</Label>
                         <div className="flex flex-col gap-2">
