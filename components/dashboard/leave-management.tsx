@@ -43,6 +43,7 @@ export function LeaveManagement({ userId }: { userId: string }) {
   useEffect(() => {
     fetchBalance();
     fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchBalance = async () => {

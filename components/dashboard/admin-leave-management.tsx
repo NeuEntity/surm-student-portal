@@ -53,10 +53,12 @@ export default function AdminLeaveManagement() {
 
   useEffect(() => {
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     fetchLeaves();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, typeFilter, dateRange, activeTab]);
 
   // Debounce search
@@ -65,6 +67,7 @@ export default function AdminLeaveManagement() {
       fetchLeaves();
     }, 500);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const fetchStats = async () => {
@@ -340,7 +343,7 @@ export default function AdminLeaveManagement() {
                         <h3 className="text-lg font-medium">Advanced Reporting Module</h3>
                         <p className="text-sm max-w-md text-center mt-2">
                             This section will feature visual charts for monthly leave trends, MC frequency analysis, and departmental comparisons. 
-                            Currently, you can use the "Export Report" button to analyze data in Excel.
+                            Currently, you can use the &quot;Export Report&quot; button to analyze data in Excel.
                         </p>
                     </div>
                 </CardContent>
