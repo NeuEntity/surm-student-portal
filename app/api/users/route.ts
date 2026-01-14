@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
         u."icNumber", u."phoneNumber", u."parentName", u."parentPhone",
         u."createdAt", u."updatedAt",
         u."teacherRoles", u."classesTaught", u."className", u."employmentType",
-        (SELECT COUNT(*) FROM submissions s WHERE s."userId" = u.id) as "submissions_count",
-        (SELECT COUNT(*) FROM grades g WHERE g."studentId" = u.id) as "grades_count"
+        (SELECT COUNT(*)::int FROM submissions s WHERE s."userId" = u.id) as "submissions_count",
+        (SELECT COUNT(*)::int FROM grades g WHERE g."studentId" = u.id) as "grades_count"
       FROM users u
       ORDER BY u."createdAt" DESC
     `;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { SubmissionType } from "@prisma/client";
+import { validateLeaveRequest } from "@/lib/leave-logic";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,11 @@ export async function GET(request: NextRequest) {
 
     // Fetch full user details to get permissions
     // Using raw query to bypass Prisma Client validation error if client is not regenerated
-    const dbUsers = await prisma.$queryRaw<any[]>`SELECT * FROM "users" WHERE "id" = ${user.id}`;
+    const dbUsers = await prisma.$queryRaw<any[]>`
+        SELECT id, role, "teacherRoles", "classesTaught"
+        FROM "users" 
+        WHERE "id" = ${user.id}
+    `;
     const dbUser = dbUsers[0];
 
     if (!dbUser) {
@@ -58,25 +63,42 @@ export async function GET(request: NextRequest) {
 
     // Teachers Logic
     if (dbUser.role === "TEACHER") {
-        // 1. Access Control
+        // Teacher viewing their own submissions (e.g., Leave Requests)
+        if (userId === user.id) {
+             const submissions = await prisma.submissions.findMany({
+                where: { userId: user.id },
+                include: {
+                    users: { select: { name: true } }
+                },
+                orderBy: { createdAt: "desc" }
+             });
+             return NextResponse.json(submissions);
+        }
+
+        // Teacher viewing Student submissions (Tahfiz/Form)
         const teacherRoles = dbUser.teacherRoles || [];
-        const isAuthorized = teacherRoles.includes("TAHFIZ") || teacherRoles.includes("FORM");
+        const isAuthorized = teacherRoles.includes("TAHFIZ") || teacherRoles.includes("FORM") || teacherRoles.includes("PRINCIPAL");
 
         if (!isAuthorized) {
              return NextResponse.json(
-                 { error: "Access denied: Requires Tahfiz or Form Teacher role" }, 
+                 { error: "Access denied: Requires Tahfiz, Form Teacher, or Principal role" }, 
                  { status: 403 }
              );
         }
 
         const whereClause: any = {};
 
-        // 2. Class Filtering
+        // Principal sees all teacher submissions? Or handles differently?
+        // Principal specific logic handled in specific approval routes or here?
+        // Let's keep this route for Student Submissions mainly, unless filtered.
+        // If Principal wants to see teacher leaves, we might need a separate call or filter.
+        
+        // 2. Class Filtering (For Student Submissions)
         const classesTaught = dbUser.classesTaught || [];
         
         // If specific class requested
         if (classFilter) {
-            if (!classesTaught.includes(classFilter)) {
+            if (!classesTaught.includes(classFilter) && !teacherRoles.includes("PRINCIPAL")) {
                 return NextResponse.json({ error: "Access denied for this class" }, { status: 403 });
             }
             whereClause.users = { className: classFilter };
@@ -86,9 +108,8 @@ export async function GET(request: NextRequest) {
                 whereClause.users = {
                     className: { in: classesTaught }
                 };
-            } else {
-                // If teacher has no classes assigned, they shouldn't see form submissions (unless maybe they are admin-like?)
-                // Assuming strict adherence to "Display only classes currently taught"
+            } else if (!teacherRoles.includes("PRINCIPAL")) {
+                // If teacher has no classes assigned and not principal
                 return NextResponse.json({ 
                     data: [], 
                     meta: { total: 0, page, limit, totalPages: 0 } 
@@ -108,7 +129,7 @@ export async function GET(request: NextRequest) {
         if (typeFilter) {
             whereClause.type = typeFilter;
         } else {
-            // Default: MC, Early Dismissal, Letters
+            // Default: MC, Early Dismissal, Letters (Student types)
             whereClause.type = { 
                 in: [
                     SubmissionType.MEDICAL_CERT, 
@@ -197,11 +218,8 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     const user = session?.user as any;
 
-    if (!user || user.role !== "STUDENT") {
-      return NextResponse.json(
-        { error: "Unauthorized - Students only" },
-        { status: 403 }
-      );
+    if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -214,66 +232,119 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // File is required for assignments and medical certificates and letters
-    // Optional for early dismissal
-    if (type !== SubmissionType.EARLY_DISMISSAL && !fileUrl) {
-      return NextResponse.json(
-        { error: "File is required for this submission type" },
-        { status: 400 }
-      );
-    }
-
-    const finalFileUrl = fileUrl || "no-file-uploaded";
-
-    // Check upload limit (5 per year)
-    // Include LETTERS in the limit? Assuming yes as it's a form.
-    if (
-      type === SubmissionType.MEDICAL_CERT ||
-      type === SubmissionType.EARLY_DISMISSAL ||
-      type === ("LETTERS" as SubmissionType)
-    ) {
-      const currentYear = new Date().getFullYear();
-      const startOfYear = new Date(currentYear, 0, 1);
-      const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
-
-      const existingCount = await prisma.submissions.count({
-        where: {
-          userId: user.id,
-          type: {
-            in: [
-                SubmissionType.MEDICAL_CERT, 
-                SubmissionType.EARLY_DISMISSAL, 
-                "LETTERS" as SubmissionType
-            ],
-          },
-          createdAt: {
-            gte: startOfYear,
-            lte: endOfYear,
-          },
-        },
-      });
-
-      if (existingCount >= 5) {
+    // --- STUDENT LOGIC ---
+    if (user.role === "STUDENT") {
+        // File is required for assignments and medical certificates and letters
+        // Optional for early dismissal
+        if (type !== SubmissionType.EARLY_DISMISSAL && !fileUrl) {
         return NextResponse.json(
-          { error: `Maximum upload limit (5) reached for forms this year (${currentYear})` },
-          { status: 400 }
+            { error: "File is required for this submission type" },
+            { status: 400 }
         );
-      }
+        }
+
+        const finalFileUrl = fileUrl || "no-file-uploaded";
+
+        // Check upload limit (5 per year)
+        if (
+        type === SubmissionType.MEDICAL_CERT ||
+        type === SubmissionType.EARLY_DISMISSAL ||
+        type === ("LETTERS" as SubmissionType)
+        ) {
+        const currentYear = new Date().getFullYear();
+        const startOfYear = new Date(currentYear, 0, 1);
+        const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+
+        const existingCount = await prisma.submissions.count({
+            where: {
+            userId: user.id,
+            type: {
+                in: [
+                    SubmissionType.MEDICAL_CERT, 
+                    SubmissionType.EARLY_DISMISSAL, 
+                    "LETTERS" as SubmissionType
+                ],
+            },
+            createdAt: {
+                gte: startOfYear,
+                lte: endOfYear,
+            },
+            },
+        });
+
+        if (existingCount >= 5) {
+            return NextResponse.json(
+            { error: `Maximum upload limit (5) reached for forms this year (${currentYear})` },
+            { status: 400 }
+            );
+        }
+        }
+
+        const submission = await prisma.submissions.create({
+        data: {
+            id: crypto.randomUUID(),
+            userId: user.id,
+            type,
+            fileUrl: finalFileUrl,
+            assignmentId: assignmentId || null,
+            ...(metadata && { metadata }),
+            updatedAt: new Date(),
+        },
+        });
+
+        return NextResponse.json(submission, { status: 201 });
     }
 
-    const submission = await prisma.submissions.create({
-      data: {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        type,
-        fileUrl: finalFileUrl,
-        assignmentId: assignmentId || null,
-        ...(metadata && { metadata }),
-        updatedAt: new Date(),
-      },
-    });
+    // --- TEACHER LOGIC (Leave Submission) ---
+    if (user.role === "TEACHER") {
+        if (type === SubmissionType.ANNUAL_LEAVE || type === SubmissionType.MEDICAL_CERT) {
+            // 1. Fetch user details for employment type
+            const dbUsers = await prisma.$queryRaw<any[]>`SELECT "employmentType" FROM "users" WHERE "id" = ${user.id}`;
+            const dbUser = dbUsers[0];
+            
+            // 2. Validate Entitlement
+            const days = metadata?.days || 0;
+            if (days <= 0) {
+                return NextResponse.json({ error: "Invalid number of days" }, { status: 400 });
+            }
 
-    return NextResponse.json(submission, { status: 201 });
+            const validation = await validateLeaveRequest(user.id, dbUser.employmentType, type, days);
+            if (!validation.valid) {
+                return NextResponse.json({ error: validation.error }, { status: 400 });
+            }
+
+            // 3. Create Submission
+            const submission = await prisma.submissions.create({
+                data: {
+                    id: crypto.randomUUID(),
+                    userId: user.id,
+                    type,
+                    fileUrl: fileUrl || "no-file-uploaded", // Optional for AL?
+                    status: "PENDING", // Explicitly pending
+                    metadata: metadata,
+                    updatedAt: new Date(),
+                },
+            });
+
+            // 4. Audit Log
+            await prisma.$executeRaw`
+                INSERT INTO audit_logs (
+                    id, action, "targetId", "targetType", "actorId", details, "createdAt"
+                ) VALUES (
+                    ${crypto.randomUUID()}, 'APPLY_LEAVE', ${submission.id}, 'SUBMISSION', ${user.id}, 
+                    ${JSON.stringify({ type, days, status: 'PENDING' })}::jsonb, NOW()
+                )
+            `;
+
+            return NextResponse.json(submission, { status: 201 });
+        }
+    }
+
+    return NextResponse.json(
+        { error: "Unauthorized submission type or role" },
+        { status: 403 }
+    );
+
   } catch (error) {
     console.error("Error creating submission:", error);
     return NextResponse.json(

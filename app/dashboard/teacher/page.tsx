@@ -8,28 +8,9 @@ import { LogoutButton } from "@/components/logout-button";
 import TeacherDashboardClient from "@/components/dashboard/teacher-dashboard-client";
 import { CreateMaterialForm } from "@/components/dashboard/create-material-form";
 import { CreateAssignmentForm } from "@/components/dashboard/create-assignment-form";
-
-const SUBJECTS = [
-  { value: Subject.AKIDAH, label: "Akidah" },
-  { value: Subject.AKHLAK, label: "Akhlak" },
-  { value: Subject.FIQH, label: "Fiqh" },
-  { value: Subject.FARAIDH, label: "Faraidh" },
-  { value: Subject.SIRAH, label: "Sirah" },
-  { value: Subject.HADIS, label: "Hadis" },
-  { value: Subject.MUSTOLAH_HADIS, label: "Mustolah Hadis" },
-  { value: Subject.ENGLISH, label: "English" },
-  { value: Subject.MALAY, label: "Malay" },
-  { value: Subject.ARABIC, label: "Arabic" },
-  { value: Subject.MATHS, label: "Maths" },
-  { value: Subject.IRK, label: "IRK" },
-];
-
-const LEVELS = [
-  { value: Level.SECONDARY_1, label: "Secondary 1" },
-  { value: Level.SECONDARY_2, label: "Secondary 2" },
-  { value: Level.SECONDARY_3, label: "Secondary 3" },
-  { value: Level.SECONDARY_4, label: "Secondary 4" },
-];
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LeaveManagement } from "@/components/dashboard/leave-management";
+import { PrincipalApprovals } from "@/components/dashboard/principal-approvals";
 
 export default async function TeacherDashboardPage() {
   const session = await auth();
@@ -39,7 +20,11 @@ export default async function TeacherDashboardPage() {
   }
 
   // Use raw query to bypass Prisma validation error (EPERM on client generation)
-  const dbUsers = await prisma.$queryRaw<any[]>`SELECT * FROM "users" WHERE "id" = ${session.user.id}`;
+  const dbUsers = await prisma.$queryRaw<any[]>`
+    SELECT id, name, email, role, "teacherRoles", "classesTaught"
+    FROM "users" 
+    WHERE "id" = ${session.user.id}
+  `;
   const dbUser = dbUsers[0];
 
   if (!dbUser || dbUser.role !== "TEACHER") {
@@ -47,6 +32,7 @@ export default async function TeacherDashboardPage() {
   }
 
   const user = dbUser;
+  const isPrincipal = user.teacherRoles?.includes("PRINCIPAL");
 
   async function createMaterial(formData: FormData) {
     "use server";
@@ -301,7 +287,7 @@ export default async function TeacherDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[var(--surm-paper)]">
-      {/* Hero Banner Section */}
+      {/* ... Hero Banner ... */}
       <div className="relative w-full h-64 bg-[var(--surm-green)] rounded-b-3xl overflow-hidden mb-8">
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--surm-green)]/90 to-[var(--surm-green-soft)]/80"></div>
         <div className="relative container mx-auto px-4 py-12 h-full flex flex-col justify-center">
@@ -318,43 +304,69 @@ export default async function TeacherDashboardPage() {
       </div>
 
       <div className="container mx-auto px-4 pb-8 -mt-4">
-        {/* Create Forms */}
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
-          {/* Create Material - Beige Panel */}
-          <section className="rounded-2xl bg-[var(--surm-beige)] p-8">
-            <h2 className="text-2xl font-serif font-semibold text-[var(--surm-text-dark)] mb-2 flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Create Learning Material
-            </h2>
-            <p className="text-sm text-[var(--surm-text-dark)]/80 mb-6 font-sans">Add new learning materials for students</p>
-            <CreateMaterialForm createMaterial={createMaterial} />
-            </section>
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="bg-white/50 backdrop-blur border">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="leave">Leave & MC</TabsTrigger>
+            {isPrincipal && <TabsTrigger value="approvals">Approvals</TabsTrigger>}
+          </TabsList>
 
-          {/* Create Assignment - Dark Green Panel */}
-          <section className="rounded-2xl bg-[var(--surm-green-soft)] p-8 text-white">
-            <h2 className="text-2xl font-serif font-semibold text-white mb-2 flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Create Assignment
-            </h2>
-            <p className="text-sm text-white/90 mb-6 font-sans">Add new assignments for students</p>
-            <CreateAssignmentForm createAssignment={createAssignment} />
-            </section>
-        </div>
+          <TabsContent value="overview" className="space-y-4">
+            {/* Create Forms */}
+            <div className="grid gap-6 md:grid-cols-2 mb-8">
+              {/* Create Material - Beige Panel */}
+              <section className="rounded-2xl bg-[var(--surm-beige)] p-8">
+                <h2 className="text-2xl font-serif font-semibold text-[var(--surm-text-dark)] mb-2 flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Create Learning Material
+                </h2>
+                <p className="text-sm text-[var(--surm-text-dark)]/80 mb-6 font-sans">Add new learning materials for students</p>
+                <CreateMaterialForm createMaterial={createMaterial} />
+              </section>
 
-        {/* Client Component with Edit/Delete/Grades */}
-        <TeacherDashboardClient
-          initialMaterials={materials.map(m => ({
-            ...m,
-            attachments: m.attachments as any,
-          }))}
-          initialAssignments={assignments}
-          students={students as any}
-          grades={grades}
-          formSubmissions={[] as any} // Empty initial forms, client fetches
-          assignmentSubmissions={assignmentSubmissions as any}
-          teacherRoles={user.teacherRoles}
-          classesTaught={user.classesTaught}
-        />
+              {/* Create Assignment - Dark Green Panel */}
+              <section className="rounded-2xl bg-[var(--surm-green-soft)] p-8 text-white">
+                <h2 className="text-2xl font-serif font-semibold text-white mb-2 flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Create Assignment
+                </h2>
+                <p className="text-sm text-white/90 mb-6 font-sans">Add new assignments for students</p>
+                <CreateAssignmentForm createAssignment={createAssignment} />
+              </section>
+            </div>
+
+            {/* Client Component with Edit/Delete/Grades */}
+            <TeacherDashboardClient
+              initialMaterials={materials.map(m => ({
+                ...m,
+                attachments: m.attachments as any,
+              }))}
+              initialAssignments={assignments}
+              students={students as any}
+              grades={grades}
+              formSubmissions={[] as any} // Empty initial forms, client fetches
+              assignmentSubmissions={assignmentSubmissions as any}
+              teacherRoles={user.teacherRoles}
+              classesTaught={user.classesTaught}
+            />
+          </TabsContent>
+
+          <TabsContent value="leave" className="space-y-4">
+             <div className="bg-white rounded-xl p-6 shadow-sm border">
+                <h2 className="text-2xl font-serif font-semibold mb-6">Leave Management</h2>
+                <LeaveManagement userId={user.id} />
+             </div>
+          </TabsContent>
+
+          {isPrincipal && (
+             <TabsContent value="approvals" className="space-y-4">
+                <div className="bg-white rounded-xl p-6 shadow-sm border">
+                   <h2 className="text-2xl font-serif font-semibold mb-6">Principal Approvals</h2>
+                   <PrincipalApprovals />
+                </div>
+             </TabsContent>
+          )}
+        </Tabs>
       </div>
     </div>
   );

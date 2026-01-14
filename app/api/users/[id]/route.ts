@@ -102,6 +102,9 @@ export async function PUT(
     let updatePName = existingUser.parentName;
     let updatePPhone = existingUser.parentPhone;
     let updateClassName = existingUser.className;
+    
+    // Ensure arrays are arrays. Postgres array columns come back as arrays from node-postgres,
+    // but we should be safe.
     let updateTRoles = existingUser.teacherRoles || [];
     let updateCTaught = existingUser.classesTaught || [];
     let updateEmpType = existingUser.employmentType;
@@ -124,6 +127,7 @@ export async function PUT(
         updatePName = null;
         updatePPhone = null;
         updateClassName = null;
+        // IMPORTANT: explicitly check undefined to allow clearing or setting empty arrays
         if (teacherRoles !== undefined) updateTRoles = teacherRoles;
         if (classesTaught !== undefined) updateCTaught = classesTaught;
         if (employmentType !== undefined) updateEmpType = employmentType;

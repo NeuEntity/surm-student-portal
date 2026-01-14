@@ -11,6 +11,7 @@ import {
 import { Users, BookOpen, FileText, Upload } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import AdminUserManagement from "@/components/dashboard/admin-user-management";
+import AdminLeaveManagement from "@/components/dashboard/admin-leave-management";
 
 export default async function AdminDashboardPage() {
   const session = await auth();
@@ -32,6 +33,10 @@ export default async function AdminDashboardPage() {
       phoneNumber: true,
       parentName: true,
       parentPhone: true,
+      className: true,
+      teacherRoles: true,
+      classesTaught: true,
+      employmentType: true,
       createdAt: true,
       _count: {
         select: {
@@ -139,6 +144,11 @@ export default async function AdminDashboardPage() {
           <div className="bg-white rounded-xl p-6">
             <AdminUserManagement initialUsers={users} currentUserId={user.id} />
           </div>
+        </section>
+
+        {/* Leave Management System - White/Green Panel */}
+        <section className="rounded-2xl bg-white border border-[var(--surm-green-soft)]/20 p-8 mb-8 shadow-sm">
+           <AdminLeaveManagement />
         </section>
 
         {/* Additional Statistics by Level */}

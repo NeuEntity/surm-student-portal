@@ -162,6 +162,18 @@ export default function AdminUserManagement({
     return level.replace("_", " ").replace("SECONDARY", "Secondary");
   };
 
+  const getRoleLabel = (role: string) => {
+    return ROLES.find(r => r.value === role)?.label || role;
+  };
+
+  const getTeacherRoleLabel = (role: string) => {
+    return TEACHER_ROLES.find(r => r.value === role)?.label || role;
+  };
+
+  const getEmploymentLabel = (type: string) => {
+    return EMPLOYMENT_TYPES.find(t => t.value === type)?.label || type.replace(/_/g, " ");
+  };
+
   // Filter users by level and role
   const filteredUsers = users.filter(user => {
     if (levelFilter !== "all" && user.level !== levelFilter) {
@@ -583,22 +595,20 @@ export default function AdminUserManagement({
                                     <TableCell className="font-medium">{user.name}</TableCell>
                                     <TableCell>{user.email}</TableCell>
                                     <TableCell>
-                                        <div className="flex flex-col gap-2">
-                                            <Badge className={getRoleBadgeClass(user.role)} variant="outline">{user.role}</Badge>
+                                        <div className="flex flex-wrap gap-1.5 items-center max-w-[200px]">
+                                            <Badge className={getRoleBadgeClass(user.role)} variant="outline">
+                                                {getRoleLabel(user.role)}
+                                            </Badge>
                                             {user.role === Role.TEACHER && (
                                                 <>
-                                                    {user.teacherRoles && user.teacherRoles.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {user.teacherRoles.map(role => (
-                                                                <Badge key={role} variant="outline" className={getTeacherRoleBadgeClass(role)}>
-                                                                    {role}
-                                                                </Badge>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                    {user.teacherRoles?.map(role => (
+                                                        <Badge key={role} variant="outline" className={getTeacherRoleBadgeClass(role)}>
+                                                            {getTeacherRoleLabel(role)}
+                                                        </Badge>
+                                                    ))}
                                                     {user.employmentType && (
-                                                        <Badge variant="secondary" className="w-fit text-[10px]">
-                                                            {user.employmentType.replace(/_/g, " ")}
+                                                        <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100">
+                                                            {getEmploymentLabel(user.employmentType)}
                                                         </Badge>
                                                     )}
                                                 </>
@@ -732,7 +742,7 @@ export default function AdminUserManagement({
                                 <TableRow key={user.id}>
                                     <TableCell className="font-medium">{user.name}</TableCell>
                                     <TableCell>{user.email}</TableCell>
-                                    <TableCell><Badge className={getRoleBadgeClass(user.role)} variant="outline">{user.role}</Badge></TableCell>
+                                    <TableCell><Badge className={getRoleBadgeClass(user.role)} variant="outline">{getRoleLabel(user.role)}</Badge></TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
                                             <Button size="sm" variant="outline" onClick={() => {
@@ -831,6 +841,17 @@ export default function AdminUserManagement({
                                 </div>
                             ))}
                         </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-employment">Employment Type</Label>
+                        <Select name="employmentType" defaultValue={editingUser.employmentType || ""} required onValueChange={(value) => setSelectedEmploymentType(value)}>
+                            <SelectTrigger id="edit-employment"><SelectValue placeholder="Select type" /></SelectTrigger>
+                            <SelectContent>
+                                {EMPLOYMENT_TYPES.map((type) => (
+                                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="space-y-2">
                         <Label>Classes Taught (Levels)</Label>
