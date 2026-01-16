@@ -2094,7 +2094,7 @@ export default function StudentDashboard({
                 </div>
                 <div className="bg-white/50 backdrop-blur-sm px-6 py-3 rounded-2xl border border-[var(--surm-text-dark)]/5">
                   <p className="text-sm font-medium text-[var(--surm-text-dark)]/70 font-sans uppercase tracking-wider mb-1">
-                    Annual Limit (All Forms)
+                    ANNUAL LIMIT FOR LETTERS ONLY
                   </p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-serif font-bold text-[var(--surm-text-dark)]">
