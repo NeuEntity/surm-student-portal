@@ -245,40 +245,30 @@ export async function POST(request: NextRequest) {
 
         const finalFileUrl = fileUrl || "no-file-uploaded";
 
-        // Check upload limit (5 per year)
-        if (
-        type === SubmissionType.MEDICAL_CERT ||
-        type === SubmissionType.EARLY_DISMISSAL ||
-        type === ("LETTERS" as SubmissionType)
-        ) {
-        const currentYear = new Date().getFullYear();
-        const startOfYear = new Date(currentYear, 0, 1);
-        const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+        // Check upload limit (5 per year) - ONLY FOR LETTERS
+    if (type === "LETTERS" as SubmissionType) {
+      const currentYear = new Date().getFullYear();
+      const startOfYear = new Date(currentYear, 0, 1);
+      const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
 
-        const existingCount = await prisma.submissions.count({
-            where: {
-            userId: user.id,
-            type: {
-                in: [
-                    SubmissionType.MEDICAL_CERT, 
-                    SubmissionType.EARLY_DISMISSAL, 
-                    "LETTERS" as SubmissionType
-                ],
-            },
-            createdAt: {
-                gte: startOfYear,
-                lte: endOfYear,
-            },
-            },
-        });
+      const existingCount = await prisma.submissions.count({
+        where: {
+          userId: user.id,
+          type: "LETTERS" as SubmissionType,
+          createdAt: {
+            gte: startOfYear,
+            lte: endOfYear,
+          },
+        },
+      });
 
-        if (existingCount >= 5) {
-            return NextResponse.json(
-            { error: `Maximum upload limit (5) reached for forms this year (${currentYear})` },
-            { status: 400 }
-            );
-        }
-        }
+      if (existingCount >= 5) {
+        return NextResponse.json(
+          { error: `Maximum upload limit (5) reached for letters this year (${currentYear})` },
+          { status: 400 }
+        );
+      }
+    }
 
         const submission = await prisma.submissions.create({
         data: {

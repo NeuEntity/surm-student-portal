@@ -172,18 +172,15 @@ export default function StudentDashboard({
 
   // Filter form submissions by current year
   const currentYear = new Date().getFullYear();
-  // Filter for ALL form submissions (MC, Dismissal, Letters) for the limit check
-  const allFormSubmissions = (submissions || []).filter(
+  // Filter specifically for LETTER submissions for the limit check and history display
+  const letterSubmissions = (submissions || []).filter(
     (s) => {
       const submissionYear = new Date(s.createdAt).getFullYear();
-      return (s.type === "MEDICAL_CERT" || s.type === "EARLY_DISMISSAL" || s.type === "LETTERS") && submissionYear === currentYear;
+      return s.type === "LETTERS" && submissionYear === currentYear;
     }
   );
-  
-  // Filter specifically for LETTER submissions for the history display
-  const letterSubmissions = allFormSubmissions.filter(s => s.type === "LETTERS");
 
-  const canUploadMore = allFormSubmissions.length < 5;
+  const canUploadLetters = letterSubmissions.length < 5;
 
   const filteredMaterials =
     subjectFilter === "all"
@@ -1471,7 +1468,7 @@ export default function StudentDashboard({
                         type="text"
                         value={lettersForm.parentName}
                         onChange={(e) => setLettersForm({ ...lettersForm, parentName: e.target.value })}
-                        disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        disabled={!canUploadLetters || uploadingFormType === "LETTERS"}
                         className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                         required
                       />
@@ -1485,7 +1482,7 @@ export default function StudentDashboard({
                         type="text"
                         value={lettersForm.studentName}
                         onChange={(e) => setLettersForm({ ...lettersForm, studentName: e.target.value })}
-                        disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        disabled={!canUploadLetters || uploadingFormType === "LETTERS"}
                         className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                         required
                       />
@@ -1500,7 +1497,7 @@ export default function StudentDashboard({
                         <Select
                             value={lettersForm.class}
                             onValueChange={(value) => setLettersForm({ ...lettersForm, class: value })}
-                            disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                            disabled={!canUploadLetters || uploadingFormType === "LETTERS"}
                         >
                             <SelectTrigger className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base">
                                 <SelectValue placeholder="Select Class" />
@@ -1522,7 +1519,7 @@ export default function StudentDashboard({
                         type="date"
                         value={lettersForm.date}
                         onChange={(e) => setLettersForm({ ...lettersForm, date: e.target.value })}
-                        disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        disabled={!canUploadLetters || uploadingFormType === "LETTERS"}
                         className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                         required
                         />
@@ -1537,7 +1534,7 @@ export default function StudentDashboard({
                       id="letters-reason"
                       value={lettersForm.reason}
                       onChange={(e) => setLettersForm({ ...lettersForm, reason: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                      disabled={!canUploadLetters || uploadingFormType === "LETTERS"}
                       className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] min-h-[100px] text-base resize-none"
                       required
                     />
@@ -1556,7 +1553,7 @@ export default function StudentDashboard({
                           const file = e.target.files?.[0] || null;
                           setLettersForm({ ...lettersForm, file });
                         }}
-                        disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        disabled={!canUploadLetters || uploadingFormType === "LETTERS"}
                         className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base pt-2.5"
                         required
                       />
@@ -1570,7 +1567,7 @@ export default function StudentDashboard({
                   <div className="pt-2">
                     <Button
                       type="submit"
-                      disabled={!canUploadMore || uploadingFormType === "LETTERS" || uploading}
+                      disabled={!canUploadLetters || uploadingFormType === "LETTERS" || uploading}
                       className="w-full bg-[var(--surm-accent)] hover:bg-[#35803F] text-white font-serif font-bold h-12 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                     >
                       {uploadingFormType === "LETTERS" ? (
@@ -1610,7 +1607,7 @@ export default function StudentDashboard({
                       type="text"
                       value={medicalForm.fullName}
                       onChange={(e) => setMedicalForm({ ...medicalForm, fullName: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
+                      disabled={uploadingFormType === "MEDICAL_CERT"}
                       className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
@@ -1625,7 +1622,7 @@ export default function StudentDashboard({
                       type="text"
                       value={medicalForm.class}
                       onChange={(e) => setMedicalForm({ ...medicalForm, class: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
+                      disabled={uploadingFormType === "MEDICAL_CERT"}
                       className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
@@ -1642,7 +1639,7 @@ export default function StudentDashboard({
                         type="date"
                         value={medicalForm.date}
                         onChange={(e) => setMedicalForm({ ...medicalForm, date: e.target.value })}
-                        disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
+                        disabled={uploadingFormType === "MEDICAL_CERT"}
                         className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] pl-12 h-12 text-base"
                         required
                       />
@@ -1657,7 +1654,7 @@ export default function StudentDashboard({
                       id="medical-reason"
                       value={medicalForm.reason}
                       onChange={(e) => setMedicalForm({ ...medicalForm, reason: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
+                      disabled={uploadingFormType === "MEDICAL_CERT"}
                       className="min-h-[120px] bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] text-base resize-none"
                       placeholder="Please provide the reason for medical certification"
                       required
@@ -1674,7 +1671,7 @@ export default function StudentDashboard({
                         name="file"
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png"
-                        disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
+                        disabled={uploadingFormType === "MEDICAL_CERT"}
                         onChange={(e) => setMedicalForm({ ...medicalForm, file: e.target.files?.[0] || null })}
                         className="hidden"
                         required
@@ -1682,13 +1679,13 @@ export default function StudentDashboard({
                       <label
                         htmlFor="medical-file"
                         className={`flex flex-col items-center justify-center gap-3 w-full px-6 py-8 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-300 ${
-                          !canUploadMore || uploadingFormType === "MEDICAL_CERT"
+                          uploadingFormType === "MEDICAL_CERT"
                             ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-70"
                             : "bg-[var(--surm-paper)] border-[var(--surm-green)]/30 hover:border-[var(--surm-accent)] hover:bg-[var(--surm-beige)]/10"
                         }`}
                       >
                         <div className={`p-3 rounded-full ${
-                          !canUploadMore || uploadingFormType === "MEDICAL_CERT"
+                          uploadingFormType === "MEDICAL_CERT"
                             ? "bg-gray-100"
                             : "bg-[var(--surm-green)]/5 text-[var(--surm-green)]"
                         }`}>
@@ -1719,7 +1716,7 @@ export default function StudentDashboard({
                   
                   <Button
                     type="submit"
-                    disabled={!canUploadMore || uploadingFormType === "MEDICAL_CERT"}
+                    disabled={uploadingFormType === "MEDICAL_CERT"}
                     className="w-full rounded-xl bg-[#0F2C18] text-white hover:bg-[#0F2C18]/90 py-6 text-base font-medium shadow-md hover:shadow-lg transition-all duration-300 border-0"
                   >
                     {uploadingFormType === "MEDICAL_CERT" ? "Submitting..." : "Submit Application"}
@@ -1753,7 +1750,7 @@ export default function StudentDashboard({
                       aria-label="Parent Full Name"
                       value={dismissalForm.parentName}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, parentName: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      disabled={uploadingFormType === "EARLY_DISMISSAL"}
                       className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
@@ -1771,7 +1768,7 @@ export default function StudentDashboard({
                       aria-label="Student Full Name"
                       value={dismissalForm.fullName}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, fullName: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      disabled={uploadingFormType === "EARLY_DISMISSAL"}
                       className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
@@ -1791,7 +1788,7 @@ export default function StudentDashboard({
                       placeholder="e.g. 123456-78-9012 or 123456789012"
                       value={dismissalForm.icNumber}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, icNumber: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      disabled={uploadingFormType === "EARLY_DISMISSAL"}
                       className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
@@ -1810,7 +1807,7 @@ export default function StudentDashboard({
                       aria-label="Class"
                       value={dismissalForm.class}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, class: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      disabled={uploadingFormType === "EARLY_DISMISSAL"}
                       className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                       required
                     />
@@ -1832,14 +1829,14 @@ export default function StudentDashboard({
                         aria-label="Day"
                         value={dismissalForm.day}
                         onChange={(e) => setDismissalForm({ ...dismissalForm, day: e.target.value })}
-                        disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                        disabled={uploadingFormType === "EARLY_DISMISSAL"}
                         className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                         required
                       />
                       <Select
                         value={dismissalForm.month}
                         onValueChange={(value) => setDismissalForm({ ...dismissalForm, month: value })}
-                        disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                        disabled={uploadingFormType === "EARLY_DISMISSAL"}
                       >
                         <SelectTrigger className="bg-white border-[var(--surm-green)]/20 focus:ring-[var(--surm-accent)] h-12 text-base sm:col-span-2">
                           <SelectValue placeholder="Month" />
@@ -1860,7 +1857,7 @@ export default function StudentDashboard({
                         aria-label="Year"
                         value={dismissalForm.year}
                         onChange={(e) => setDismissalForm({ ...dismissalForm, year: e.target.value })}
-                        disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                        disabled={uploadingFormType === "EARLY_DISMISSAL"}
                         className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
                         required
                       />
@@ -1870,14 +1867,14 @@ export default function StudentDashboard({
                           aria-label="Time"
                           value={dismissalForm.time}
                           onChange={(e) => setDismissalForm({ ...dismissalForm, time: e.target.value })}
-                          disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                          disabled={uploadingFormType === "EARLY_DISMISSAL"}
                           className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base flex-1"
                           required
                         />
                         <Select
                           value={dismissalForm.ampm}
                           onValueChange={(value) => setDismissalForm({ ...dismissalForm, ampm: value })}
-                          disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                          disabled={uploadingFormType === "EARLY_DISMISSAL"}
                         >
                           <SelectTrigger className="w-16 sm:w-20 bg-white border-[var(--surm-green)]/20 focus:ring-[var(--surm-accent)] h-12 text-base z-30">
                             <SelectValue />
@@ -1903,7 +1900,7 @@ export default function StudentDashboard({
                       aria-label="Reason"
                       value={dismissalForm.reason}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, reason: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      disabled={uploadingFormType === "EARLY_DISMISSAL"}
                       className="min-h-[120px] bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] text-base resize-none"
                       placeholder="Please provide the reason for early dismissal"
                       required
@@ -1922,7 +1919,7 @@ export default function StudentDashboard({
                       aria-label="Transport details"
                       value={dismissalForm.transport}
                       onChange={(e) => setDismissalForm({ ...dismissalForm, transport: e.target.value })}
-                      disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                      disabled={uploadingFormType === "EARLY_DISMISSAL"}
                       className="min-h-[80px] bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] text-base resize-none"
                       placeholder="E.g., Picked up by parent at gate"
                     />
@@ -1976,7 +1973,7 @@ export default function StudentDashboard({
                           aria-label="Clear signature"
                           variant="outline"
                           onClick={() => clearSignature()}
-                          disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                          disabled={uploadingFormType === "EARLY_DISMISSAL"}
                           className="text-xs h-8 border-[var(--surm-green)]/30 text-[var(--surm-green)] hover:bg-[var(--surm-green)]/5 hover:text-[var(--surm-green)]"
                         >
                           Clear Signature
@@ -1998,20 +1995,20 @@ export default function StudentDashboard({
                         name="file"
                         type="file"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                        disabled={uploadingFormType === "EARLY_DISMISSAL"}
                         onChange={(e) => setDismissalForm({ ...dismissalForm, file: e.target.files?.[0] || null })}
                         className="hidden"
                       />
                       <label
                         htmlFor="dismissal-file"
                         className={`flex flex-col items-center justify-center gap-3 w-full px-6 py-8 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-300 ${
-                          !canUploadMore || uploadingFormType === "EARLY_DISMISSAL"
+                          uploadingFormType === "EARLY_DISMISSAL"
                             ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-70"
                             : "bg-[var(--surm-paper)] border-[var(--surm-green)]/30 hover:border-[var(--surm-accent)] hover:bg-[var(--surm-beige)]/10"
                         }`}
                       >
                         <div className={`p-3 rounded-full ${
-                          !canUploadMore || uploadingFormType === "EARLY_DISMISSAL"
+                          uploadingFormType === "EARLY_DISMISSAL"
                             ? "bg-gray-100"
                             : "bg-[var(--surm-green)]/5 text-[var(--surm-green)]"
                         }`}>
@@ -2042,7 +2039,7 @@ export default function StudentDashboard({
                   
                   <Button
                     type="submit"
-                    disabled={!canUploadMore || uploadingFormType === "EARLY_DISMISSAL"}
+                    disabled={uploadingFormType === "EARLY_DISMISSAL"}
                     className="w-full rounded-xl bg-[#0F2C18] text-white hover:bg-[#0F2C18]/90 py-6 text-base font-medium shadow-md hover:shadow-lg transition-all duration-300 border-0"
                   >
                     {uploadingFormType === "EARLY_DISMISSAL" ? "Submitting..." : "Submit Application"}
@@ -2098,7 +2095,7 @@ export default function StudentDashboard({
                   </p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-serif font-bold text-[var(--surm-text-dark)]">
-                      {allFormSubmissions.length}
+                      {letterSubmissions.length}
                     </span>
                     <span className="text-[var(--surm-text-dark)]/60 font-sans">
                       / 5 used
@@ -2107,11 +2104,11 @@ export default function StudentDashboard({
                 </div>
               </div>
               
-              {!canUploadMore && (
+              {!canUploadLetters && (
                 <div className="flex items-center gap-3 p-4 bg-red-100/80 border border-red-200 rounded-xl mb-6 text-red-800">
                   <AlertCircle className="w-5 h-5 shrink-0" />
                   <p className="text-sm font-sans font-medium">
-                    You have reached the maximum upload limit (5 files) for the year {currentYear}. Please contact administration for assistance.
+                    You have reached the maximum upload limit (5 letters) for the year {currentYear}. Please contact administration for assistance.
                   </p>
                 </div>
               )}
