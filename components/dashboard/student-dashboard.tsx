@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Level, Subject } from "@prisma/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,6 +118,7 @@ export default function StudentDashboard({
   grades,
   userId,
 }: StudentDashboardProps) {
+  const router = useRouter();
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
@@ -147,25 +149,41 @@ export default function StudentDashboard({
     transport: "",
     file: null as File | null,
   });
+  
+  // Letters form state
+  const [lettersForm, setLettersForm] = useState({
+    parentName: "",
+    studentName: userName,
+    class: level.replace("SECONDARY_", "Secondary "),
+    date: "",
+    reason: "",
+    file: null as File | null,
+  });
+
   const [dismissalErrors, setDismissalErrors] = useState<Record<string, string>>({});
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const signatureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef<boolean>(false);
   const [hasSignature, setHasSignature] = useState(false);
   
-  const [uploadingFormType, setUploadingFormType] = useState<"MEDICAL_CERT" | "EARLY_DISMISSAL" | null>(null);
+  const [uploadingFormType, setUploadingFormType] = useState<"MEDICAL_CERT" | "EARLY_DISMISSAL" | "LETTERS" | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<string | null>(null);
   const [previewMaterial, setPreviewMaterial] = useState<string | null>(null);
 
   // Filter form submissions by current year
   const currentYear = new Date().getFullYear();
-  const formSubmissions = (submissions || []).filter(
+  // Filter for ALL form submissions (MC, Dismissal, Letters) for the limit check
+  const allFormSubmissions = (submissions || []).filter(
     (s) => {
       const submissionYear = new Date(s.createdAt).getFullYear();
-      return (s.type === "MEDICAL_CERT" || s.type === "EARLY_DISMISSAL") && submissionYear === currentYear;
+      return (s.type === "MEDICAL_CERT" || s.type === "EARLY_DISMISSAL" || s.type === "LETTERS") && submissionYear === currentYear;
     }
   );
-  const canUploadMore = formSubmissions.length < 5;
+  
+  // Filter specifically for LETTER submissions for the history display
+  const letterSubmissions = allFormSubmissions.filter(s => s.type === "LETTERS");
+
+  const canUploadMore = allFormSubmissions.length < 5;
 
   const filteredMaterials =
     subjectFilter === "all"
@@ -328,7 +346,7 @@ export default function StudentDashboard({
       }
       
       setTimeout(() => {
-        window.location.reload();
+        router.refresh();
       }, 1500);
     } catch (error: any) {
       const errorMsg = `Error: ${error.message}`;
@@ -434,7 +452,7 @@ export default function StudentDashboard({
       });
       
       setTimeout(() => {
-        window.location.reload();
+        router.refresh();
       }, 1500);
     } catch (error: any) {
       setUploadMessage(`Error: ${error.message}`);
@@ -609,7 +627,106 @@ export default function StudentDashboard({
       clearSignature();
       
       setTimeout(() => {
-        window.location.reload();
+        router.refresh();
+      }, 1500);
+    } catch (error: any) {
+      setUploadMessage(`Error: ${error.message}`);
+    } finally {
+      setUploading(false);
+      setUploadingFormType(null);
+    }
+  }
+
+  async function handleLettersSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    
+    if (!lettersForm.parentName || !lettersForm.studentName || !lettersForm.class || !lettersForm.date || !lettersForm.reason || !lettersForm.file) {
+      setUploadMessage("Please fill in all required fields");
+      return;
+    }
+    
+    setUploading(true);
+    setUploadMessage("");
+    setUploadingFormType("LETTERS");
+    
+    try {
+      const file = lettersForm.file!;
+      const MAX_FILE_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error("File size exceeds 5MB limit");
+      }
+      const uploadUrl = "/api/upload";
+      const xhr = new XMLHttpRequest();
+      const fileUrl = await new Promise<string>((resolve, reject) => {
+        xhr.open("POST", uploadUrl, true);
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            const percent = Math.round((evt.loaded / evt.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const resp = JSON.parse(xhr.responseText);
+                resolve(resp.fileUrl);
+              } catch (e) {
+                reject(new Error("Invalid upload response"));
+              }
+            } else {
+              try {
+                const err = JSON.parse(xhr.responseText);
+                reject(new Error(err.error || "File upload failed"));
+              } catch {
+                reject(new Error("File upload failed"));
+              }
+            }
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        const form = new FormData();
+        form.append("file", file);
+        xhr.send(form);
+      });
+
+      const metadata = {
+        parentName: lettersForm.parentName,
+        studentName: lettersForm.studentName,
+        class: lettersForm.class,
+        date: lettersForm.date,
+        reason: lettersForm.reason,
+      };
+
+      const submissionRes = await fetch("/api/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          type: "LETTERS", 
+          fileUrl, 
+          metadata
+        }),
+      });
+
+      if (!submissionRes.ok) {
+        const error = await submissionRes.json();
+        throw new Error(error.error || "Submission failed");
+      }
+
+      setUploadMessage("Letter submitted successfully!");
+      
+      // Reset form
+      setLettersForm({
+        parentName: "",
+        studentName: userName,
+        class: level.replace("SECONDARY_", "Secondary "),
+        date: "",
+        reason: "",
+        file: null,
+      });
+      
+      setTimeout(() => {
+        router.refresh();
       }, 1500);
     } catch (error: any) {
       setUploadMessage(`Error: ${error.message}`);
@@ -1323,11 +1440,152 @@ export default function StudentDashboard({
                     Select the form type below to proceed with your request.
                   </p>
                 </div>
-                <TabsList className="grid w-full max-w-md grid-cols-2 bg-[var(--surm-beige)] p-1 rounded-full">
-                  <TabsTrigger value="medical" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm">Medical Certificate</TabsTrigger>
-                  <TabsTrigger value="dismissal" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm">Early Dismissal</TabsTrigger>
+                <TabsList className="grid w-full max-w-xl grid-cols-3 bg-[var(--surm-beige)] p-1 rounded-full">
+                  <TabsTrigger value="medical" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm">Medical Cert</TabsTrigger>
+                  <TabsTrigger value="dismissal" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm">Early Dismissal</TabsTrigger>
+                  <TabsTrigger value="letters" className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs sm:text-sm">Letters</TabsTrigger>
                 </TabsList>
               </div>
+
+              <TabsContent value="letters" className="mt-0 focus-visible:outline-none">
+                <div className="max-w-3xl mx-auto">
+                  {/* Letters Form */}
+                  <section className="rounded-3xl bg-white p-5 sm:p-6 lg:p-8 border border-[var(--surm-green)]/10 shadow-sm hover:shadow-md transition-all duration-300">
+                <div className="flex items-center gap-3 mb-5 sm:mb-6">
+                  <div className="h-8 w-1.5 rounded-full bg-[var(--surm-accent)]"></div>
+                  <h3 className="text-2xl sm:text-3xl font-serif font-bold text-[var(--surm-text-dark)]">
+                    Submit Letter
+                  </h3>
+                </div>
+                <form
+                  onSubmit={handleLettersSubmit}
+                  className="space-y-4 sm:space-y-5"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="letters-parent-name" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                        Parents Full Name <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="letters-parent-name"
+                        type="text"
+                        value={lettersForm.parentName}
+                        onChange={(e) => setLettersForm({ ...lettersForm, parentName: e.target.value })}
+                        disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="letters-student-name" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                        Student Full Name <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="letters-student-name"
+                        type="text"
+                        value={lettersForm.studentName}
+                        onChange={(e) => setLettersForm({ ...lettersForm, studentName: e.target.value })}
+                        disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <Label htmlFor="letters-class" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                        Class <span className="text-red-500">*</span>
+                        </Label>
+                        <Select
+                            value={lettersForm.class}
+                            onValueChange={(value) => setLettersForm({ ...lettersForm, class: value })}
+                            disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        >
+                            <SelectTrigger className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base">
+                                <SelectValue placeholder="Select Class" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Secondary 1">Secondary 1</SelectItem>
+                                <SelectItem value="Secondary 2">Secondary 2</SelectItem>
+                                <SelectItem value="Secondary 3">Secondary 3</SelectItem>
+                                <SelectItem value="Secondary 4">Secondary 4</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label htmlFor="letters-date" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                        Date <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                        id="letters-date"
+                        type="date"
+                        value={lettersForm.date}
+                        onChange={(e) => setLettersForm({ ...lettersForm, date: e.target.value })}
+                        disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base"
+                        required
+                        />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="letters-reason" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                      Reason <span className="text-red-500">*</span>
+                    </Label>
+                    <Textarea
+                      id="letters-reason"
+                      value={lettersForm.reason}
+                      onChange={(e) => setLettersForm({ ...lettersForm, reason: e.target.value })}
+                      disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                      className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] min-h-[100px] text-base resize-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="letters-file" className="text-[var(--surm-text-dark)] font-sans font-medium mb-2 block text-base">
+                      Upload File <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="letters-file"
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setLettersForm({ ...lettersForm, file });
+                        }}
+                        disabled={!canUploadMore || uploadingFormType === "LETTERS"}
+                        className="bg-white border-[var(--surm-green)]/20 focus:border-[var(--surm-accent)] focus:ring-[var(--surm-accent)] h-12 text-base pt-2.5"
+                        required
+                      />
+                      <File className="absolute right-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                    </div>
+                    <p className="text-xs text-[var(--surm-text-dark)]/60 mt-1 font-sans">
+                      Supported formats: PDF, JPG, PNG, DOC, DOCX (Max 5MB)
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      disabled={!canUploadMore || uploadingFormType === "LETTERS" || uploading}
+                      className="w-full bg-[var(--surm-accent)] hover:bg-[#35803F] text-white font-serif font-bold h-12 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      {uploadingFormType === "LETTERS" ? (
+                        <>
+                           <span className="animate-pulse mr-2">Uploading...</span> {uploadProgress}%
+                        </>
+                      ) : (
+                        "Submit Letter"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+                  </section>
+                </div>
+              </TabsContent>
 
               <TabsContent value="medical" className="mt-0 focus-visible:outline-none">
                 <div className="max-w-3xl mx-auto">
@@ -1828,19 +2086,19 @@ export default function StudentDashboard({
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
                   <h3 className="text-2xl font-serif font-bold text-[var(--surm-text-dark)] mb-2">
-                    Submission History
+                    Letter Submission History
                   </h3>
                   <p className="text-[var(--surm-text-dark)]/80 font-sans">
-                    Track your recent medical certificates and early dismissal requests.
+                    Track your recent letter submissions.
                   </p>
                 </div>
                 <div className="bg-white/50 backdrop-blur-sm px-6 py-3 rounded-2xl border border-[var(--surm-text-dark)]/5">
                   <p className="text-sm font-medium text-[var(--surm-text-dark)]/70 font-sans uppercase tracking-wider mb-1">
-                    Annual Limit
+                    Annual Limit (All Forms)
                   </p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-serif font-bold text-[var(--surm-text-dark)]">
-                      {formSubmissions.length}
+                      {allFormSubmissions.length}
                     </span>
                     <span className="text-[var(--surm-text-dark)]/60 font-sans">
                       / 5 used
@@ -1858,22 +2116,18 @@ export default function StudentDashboard({
                 </div>
               )}
               
-              {formSubmissions.length > 0 ? (
+              {letterSubmissions.length > 0 ? (
                 <div className="bg-white/60 rounded-2xl overflow-hidden border border-[var(--surm-text-dark)]/5">
                   <div className="grid grid-cols-1 divide-y divide-[var(--surm-text-dark)]/5">
-                    {formSubmissions.map((sub) => (
+                    {letterSubmissions.map((sub) => (
                       <div key={sub.id} className="p-4 sm:p-5 hover:bg-white/80 transition-colors flex items-center justify-between group">
                         <div className="flex items-center gap-4">
-                          <div className={`p-3 rounded-full ${
-                            sub.type === "MEDICAL_CERT" 
-                              ? "bg-[var(--surm-accent)]/10 text-[var(--surm-accent)]" 
-                              : "bg-[var(--surm-green)]/10 text-[var(--surm-green)]"
-                          }`}>
+                          <div className="p-3 rounded-full bg-blue-100 text-blue-600">
                             <FileText className="w-5 h-5" />
                           </div>
                           <div>
                             <p className="font-serif font-semibold text-[var(--surm-text-dark)]">
-                              {sub.type === "MEDICAL_CERT" ? "Medical Certificate" : "Early Dismissal Form"}
+                              Letter Submission
                             </p>
                             <p className="text-sm text-[var(--surm-text-dark)]/60 font-sans mt-0.5">
                               Submitted on {format(new Date(sub.createdAt), "PPP 'at' p")}
@@ -1901,7 +2155,7 @@ export default function StudentDashboard({
                     <File className="w-8 h-8" />
                   </div>
                   <p className="text-[var(--surm-text-dark)]/60 font-sans">
-                    No submissions found for {currentYear}.
+                    No letter submissions found for {currentYear}.
                   </p>
                 </div>
               )}

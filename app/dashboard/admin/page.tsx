@@ -1,17 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Users, BookOpen, FileText, Upload } from "lucide-react";
-import { LogoutButton } from "@/components/logout-button";
-import AdminUserManagement from "@/components/dashboard/admin-user-management";
-import AdminLeaveManagement from "@/components/dashboard/admin-leave-management";
+import { AdminOverviewCharts } from "@/components/dashboard/admin-overview-charts";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
 
 export default async function AdminDashboardPage() {
   const session = await auth();
@@ -21,29 +13,11 @@ export default async function AdminDashboardPage() {
     redirect("/dashboard");
   }
 
+  // We only need user count and distribution here, not full details of all users
   const users = await prisma.users.findMany({
-    orderBy: { createdAt: "desc" },
     select: {
-      id: true,
-      name: true,
-      email: true,
       role: true,
       level: true,
-      icNumber: true,
-      phoneNumber: true,
-      parentName: true,
-      parentPhone: true,
-      className: true,
-      teacherRoles: true,
-      classesTaught: true,
-      employmentType: true,
-      createdAt: true,
-      _count: {
-        select: {
-          submissions: true,
-          grades: true,
-        },
-      },
     },
   });
 
@@ -63,150 +37,115 @@ export default async function AdminDashboardPage() {
     return level.replace("_", " ").replace("SECONDARY", "Secondary");
   };
 
+  // --- Prepare Data for Graphs ---
+
+  // 1. Level Stats for Bar Chart
+  const levels = ["SECONDARY_1", "SECONDARY_2", "SECONDARY_3", "SECONDARY_4"];
+  const levelStats = levels.map((level) => {
+      const count = users.filter((u) => u.role === "STUDENT" && u.level === level).length;
+      return {
+          label: formatLevel(level),
+          count,
+          percentage: stats.students > 0 ? Math.round((count / stats.students) * 100) : 0
+      };
+  });
+
+  // 2. Submission Trends for Sparkline (Last 7 Days)
+  const today = new Date();
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = subDays(today, 6 - i);
+      return {
+          start: startOfDay(d),
+          end: endOfDay(d),
+          label: format(d, "MMM d"), // e.g., "Oct 25"
+      };
+  });
+
+  // We need to fetch counts for each day. 
+  // Ideally we use a raw query or groupBy, but Prisma groupBy date is tricky across DBs.
+  // We'll fetch all submissions from the last 7 days and aggregate in JS.
+  const weekStart = last7Days[0].start;
+  const recentSubmissions = await prisma.submissions.findMany({
+      where: {
+          createdAt: {
+              gte: weekStart
+          }
+      },
+      select: {
+          createdAt: true
+      }
+  });
+
+  const submissionTrend = last7Days.map(day => {
+      const count = recentSubmissions.filter(s => 
+          s.createdAt >= day.start && s.createdAt <= day.end
+      ).length;
+      
+      return {
+          date: day.label,
+          count
+      };
+  });
+
   return (
-    <div className="min-h-screen bg-[var(--surm-paper)]">
-      {/* Hero Banner Section */}
-      <div className="relative w-full h-64 bg-[var(--surm-green)] rounded-b-3xl overflow-hidden mb-8">
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--surm-green)]/90 to-[var(--surm-green-soft)]/80"></div>
-        <div className="relative container mx-auto px-4 py-12 h-full flex flex-col justify-center">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-serif font-semibold text-white mb-2">Admin Dashboard</h1>
-              <p className="text-lg text-white/90 font-sans">Welcome, {user.name}</p>
-            </div>
-            <div>
-              <LogoutButton />
-            </div>
+    <div className="space-y-8">
+      {/* Statistics Cards - Alternating Panels */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* Total Users - Beige Panel */}
+        <section className="rounded-2xl bg-[var(--surm-beige)] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-serif font-semibold text-[var(--surm-text-dark)]">Total Users</h3>
+            <Users className="h-5 w-5 text-[var(--surm-text-dark)]/60" />
           </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 pb-8 -mt-4">
-        {/* Statistics Cards - Alternating Panels */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          {/* Total Users - Beige Panel */}
-          <section className="rounded-2xl bg-[var(--surm-beige)] p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-serif font-semibold text-[var(--surm-text-dark)]">Total Users</h3>
-              <Users className="h-5 w-5 text-[var(--surm-text-dark)]/60" />
-            </div>
-            <div className="text-3xl font-bold font-serif text-[var(--surm-text-dark)] mb-2">{stats.totalUsers}</div>
-            <p className="text-xs text-[var(--surm-text-dark)]/70 font-sans">
-              {stats.students} students, {stats.teachers} teachers
-            </p>
-          </section>
-
-          {/* Learning Materials - Dark Green Panel */}
-          <section className="rounded-2xl bg-[var(--surm-green-soft)] p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-serif font-semibold text-white">Learning Materials</h3>
-              <BookOpen className="h-5 w-5 text-white/80" />
-            </div>
-            <div className="text-3xl font-bold font-serif text-white mb-2">{materialsCount}</div>
-            <p className="text-xs text-white/80 font-sans">
-              Total materials created
-            </p>
-          </section>
-
-          {/* Assignments - Beige Panel */}
-          <section className="rounded-2xl bg-[var(--surm-beige)] p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-serif font-semibold text-[var(--surm-text-dark)]">Assignments</h3>
-              <FileText className="h-5 w-5 text-[var(--surm-text-dark)]/60" />
-            </div>
-            <div className="text-3xl font-bold font-serif text-[var(--surm-text-dark)] mb-2">{assignmentsCount}</div>
-            <p className="text-xs text-[var(--surm-text-dark)]/70 font-sans">
-              Total assignments created
-            </p>
-          </section>
-
-          {/* Submissions - Dark Green Panel */}
-          <section className="rounded-2xl bg-[var(--surm-green-soft)] p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-serif font-semibold text-white">Submissions</h3>
-              <Upload className="h-5 w-5 text-white/80" />
-            </div>
-            <div className="text-3xl font-bold font-serif text-white mb-2">{submissionsCount}</div>
-            <p className="text-xs text-white/80 font-sans">
-              Total files submitted
-            </p>
-          </section>
-        </div>
-
-        {/* User Management with CRUD - Beige Panel */}
-        <section className="rounded-2xl bg-[var(--surm-beige)] p-8 mb-8">
-          <h2 className="text-2xl font-serif font-semibold text-[var(--surm-text-dark)] mb-2">
-            User Management
-          </h2>
-          <p className="text-sm text-[var(--surm-text-dark)]/80 mb-6 font-sans">
-            Create, edit, and manage all users in the system
+          <div className="text-3xl font-bold font-serif text-[var(--surm-text-dark)] mb-2">{stats.totalUsers}</div>
+          <p className="text-xs text-[var(--surm-text-dark)]/70 font-sans">
+            {stats.students} students, {stats.teachers} teachers
           </p>
-          <div className="bg-white rounded-xl p-6">
-            <AdminUserManagement initialUsers={users} currentUserId={user.id} />
+        </section>
+
+        {/* Learning Materials - Dark Green Panel */}
+        <section className="rounded-2xl bg-[var(--surm-green-soft)] p-6 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-serif font-semibold text-white">Learning Materials</h3>
+            <BookOpen className="h-5 w-5 text-white/80" />
           </div>
+          <div className="text-3xl font-bold font-serif text-white mb-2">{materialsCount}</div>
+          <p className="text-xs text-white/80 font-sans">
+            Total materials created
+          </p>
         </section>
 
-        {/* Leave Management System - White/Green Panel */}
-        <section className="rounded-2xl bg-white border border-[var(--surm-green-soft)]/20 p-8 mb-8 shadow-sm">
-           <AdminLeaveManagement />
+        {/* Assignments - Beige Panel */}
+        <section className="rounded-2xl bg-[var(--surm-beige)] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-serif font-semibold text-[var(--surm-text-dark)]">Assignments</h3>
+            <FileText className="h-5 w-5 text-[var(--surm-text-dark)]/60" />
+          </div>
+          <div className="text-3xl font-bold font-serif text-[var(--surm-text-dark)] mb-2">{assignmentsCount}</div>
+          <p className="text-xs text-[var(--surm-text-dark)]/70 font-sans">
+            Total assignments created
+          </p>
         </section>
 
-        {/* Additional Statistics by Level */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Students by Level - Dark Green Panel */}
-          <section className="rounded-2xl bg-[var(--surm-green-soft)] p-8 text-white">
-            <h2 className="text-2xl font-serif font-semibold text-white mb-2">
-              Students by Level
-            </h2>
-            <p className="text-sm text-white/90 mb-6 font-sans">Distribution across all levels</p>
-            <div className="space-y-3">
-              {["SECONDARY_1", "SECONDARY_2", "SECONDARY_3", "SECONDARY_4"].map(
-                (level) => {
-                  const count = users.filter(
-                    (u) => u.role === "STUDENT" && u.level === level
-                  ).length;
-                  return (
-                    <div
-                      key={level}
-                      className="flex items-center justify-between py-3 border-b border-white/20 last:border-0"
-                    >
-                      <span className="text-sm font-medium font-sans text-white">
-                        {formatLevel(level)}
-                      </span>
-                      <span className="text-sm font-sans text-white/90">
-                        {count} {count === 1 ? "student" : "students"}
-                      </span>
-                    </div>
-                  );
-                }
-              )}
-            </div>
-          </section>
-
-          {/* Recent Activity - Beige Panel */}
-          <section className="rounded-2xl bg-[var(--surm-beige)] p-8">
-            <h2 className="text-2xl font-serif font-semibold text-[var(--surm-text-dark)] mb-2">
-              Recent Activity
-            </h2>
-            <p className="text-sm text-[var(--surm-text-dark)]/80 mb-6 font-sans">Latest submissions</p>
-            <div className="space-y-2">
-              {submissionsCount === 0 ? (
-                <p className="text-sm text-[var(--surm-text-dark)]/70 text-center py-4 font-sans">
-                  No submissions yet
-                </p>
-              ) : (
-                <div className="text-sm text-[var(--surm-text-dark)]/80 font-sans">
-                  <p>Total submissions: {submissionsCount}</p>
-                  <p className="mt-2 text-xs text-[var(--surm-text-dark)]/60">
-                    Detailed activity logs can be implemented here
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
+        {/* Submissions - Dark Green Panel */}
+        <section className="rounded-2xl bg-[var(--surm-green-soft)] p-6 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-serif font-semibold text-white">Submissions</h3>
+            <Upload className="h-5 w-5 text-white/80" />
+          </div>
+          <div className="text-3xl font-bold font-serif text-white mb-2">{submissionsCount}</div>
+          <p className="text-xs text-white/80 font-sans">
+            Total files submitted
+          </p>
+        </section>
       </div>
+
+      {/* Advanced Charts Section */}
+      <AdminOverviewCharts 
+          userStats={stats}
+          levelStats={levelStats}
+          submissionTrend={submissionTrend}
+      />
     </div>
   );
 }
-

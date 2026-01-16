@@ -16,6 +16,9 @@ A comprehensive student learning management system built with Next.js 15, TypeSc
 - **UI Components**: Beautiful, accessible UI with shadcn/ui and TailwindCSS
 - **File Upload**: S3-compatible storage integration
 
+## Documentation
+- [Letters Feature & Admin Enhancements](docs/LETTERS_FEATURE.md)
+
 ## Tech Stack
 
 - **Framework**: Next.js 15 (App Router)
