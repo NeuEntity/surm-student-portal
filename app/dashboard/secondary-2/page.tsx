@@ -48,6 +48,7 @@ export default async function Secondary2Page() {
     <StudentDashboard
       level={Level.SECONDARY_2}
       userName={user.name}
+      userEmail={user.email}
       materials={materials.map(m => ({
         ...m,
         attachments: m.attachments as any,

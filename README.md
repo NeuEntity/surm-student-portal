@@ -169,7 +169,7 @@ The system supports 12 subjects:
 - Hadis
 - Mustolah Hadis
 - English
-- Malay
+- Bahasa Melayu
 - Arabic
 - Maths
 - IRK (Islamic Religious Knowledge)

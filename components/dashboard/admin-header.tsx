@@ -1,6 +1,6 @@
 "use client";
 
-import { LogoutButton } from "@/components/logout-button";
+import { ProfileMenu } from "@/components/profile/profile-menu";
 import { MobileNav } from "./admin-sidebar";
 import { usePathname } from "next/navigation";
 
@@ -30,10 +30,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
           </div>
         </div>
         <div className="flex items-center gap-4">
-            <span className="text-sm text-[var(--surm-text-dark)]/80 font-sans hidden sm:block">
-                Welcome, {user.name}
-            </span>
-            <LogoutButton />
+            <ProfileMenu user={user} />
         </div>
       </div>
     </header>

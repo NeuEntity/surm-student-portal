@@ -1,296 +1,239 @@
-
 import { PrismaClient, Role, Level, EmploymentType } from "@prisma/client";
-import { z } from "zod";
-import fs from "fs";
-import path from "path";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 const prisma = new PrismaClient();
 
-// --- Zod Schemas ---
-
-const StudentListSchema = z.array(z.string());
-
-const ClassListSchema = z.object({
-  level: z.string(),
-  classroom: z.string(),
-  form_teacher: z.string(),
-  total_students: z.number(),
-  breakdown: z.string(),
-  students: StudentListSchema,
-});
-
-const HalaqahListSchema = z.object({
-  halaqah_name: z.string(),
-  teacher: z.string(),
-  students: StudentListSchema,
-});
-
-const MetadataSchema = z.object({
-  total_students: z.number(),
-  demographics: z.object({
-    banin_boys: z.number(),
-    banat_girls: z.number(),
-  }),
-  last_updated: z.string(),
-  version: z.string(),
-});
-
-const DataSchema = z.object({
-  institution: z.string(),
-  academic_year: z.string(),
-  metadata: MetadataSchema,
-  class_lists: z.array(ClassListSchema),
-  halaqah_lists: z.array(HalaqahListSchema),
-});
-
-type Data = z.infer<typeof DataSchema>;
-
-// --- Helper Functions ---
-
-function generateEmail(name: string, role: Role): string {
-  let cleanName = name.toLowerCase();
+// Helper to sanitize name for email
+function generateEmail(name: string, role: string): string {
+  const sanitized = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  // Keep it simpler: firstname.lastname if possible, else sanitized string
+  const parts = name.toLowerCase().split(" ");
+  const first = parts[0].replace(/[^a-z0-9]/g, "");
+  const last = parts[parts.length - 1].replace(/[^a-z0-9]/g, "");
   
-  // Remove titles
-  const titles = ["ustaz", "ustazah", "teacher", "cikgu", "mr", "mrs", "ms", "mdm"];
-  for (const title of titles) {
-    if (cleanName.startsWith(title + " ") || cleanName.startsWith(title + ".")) {
-      cleanName = cleanName.substring(title.length + 1).trim();
-    }
-  }
-
-  cleanName = cleanName.replace(/[^a-z0-9]/g, ".");
-  // Remove multiple dots
-  cleanName = cleanName.replace(/\.+/g, ".");
-  // Remove leading/trailing dots
-  cleanName = cleanName.replace(/^\.+|\.+$/g, "");
-
-  const domain = "surm.edu.sg";
   if (role === Role.TEACHER) {
-    return `ustaz.${cleanName}@${domain}`;
+    return `ustaz.${first}.${last}@surm.edu.sg`; 
   }
-  return `${cleanName}@student.${domain}`;
+  return `${first}.${last}@student.surm.edu.sg`;
 }
 
-function mapLevel(levelStr: string): Level | null {
-  const lower = levelStr.toLowerCase();
-  if (lower.includes("secondary 1")) return Level.SECONDARY_1;
-  if (lower.includes("secondary 2")) return Level.SECONDARY_2;
-  if (lower.includes("secondary 3")) return Level.SECONDARY_3;
-  if (lower.includes("secondary 4")) return Level.SECONDARY_4;
-  return null;
+// Helper to determine Level enum from string
+function getLevel(levelStr: string): Level {
+  if (levelStr.includes("Secondary 1")) return Level.SECONDARY_1;
+  if (levelStr.includes("Secondary 2")) return Level.SECONDARY_2;
+  if (levelStr.includes("Secondary 3")) return Level.SECONDARY_3;
+  if (levelStr.includes("Secondary 4")) return Level.SECONDARY_4;
+  return Level.SECONDARY_1; // Default
 }
-
-// --- Main Migration Logic ---
 
 async function main() {
-  const isDryRun = process.argv.includes("--dry-run");
-  const dataPath = path.join(__dirname, "data.json");
+  console.log("🚀 Starting migration from real-data.json...");
 
-  console.log(`Starting migration... Mode: ${isDryRun ? "DRY RUN" : "LIVE EXECUTION"}`);
-
-  // 1. Load and Validate Data
-  if (!fs.existsSync(dataPath)) {
-    console.error(`Data file not found at ${dataPath}`);
-    process.exit(1);
-  }
-
-  const rawData = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
-  const parseResult = DataSchema.safeParse(rawData);
-
-  if (!parseResult.success) {
-    console.error("JSON Validation Failed:", parseResult.error.format());
-    process.exit(1);
-  }
-
-  const data = parseResult.data;
-  console.log("JSON structure validated successfully.");
-
-  // 2. Prepare Data Structures
-  const teachersToProcess = new Set<string>();
-  const teacherDetails = new Map<string, { roles: Set<string>; classes: Set<string> }>();
-  const studentsToProcess = new Map<string, { level: Level; classroom: string }>();
-
-  // Collect Teachers and Roles/Classes
-  data.class_lists.forEach((c) => {
-    teachersToProcess.add(c.form_teacher);
-    if (!teacherDetails.has(c.form_teacher)) {
-      teacherDetails.set(c.form_teacher, { roles: new Set(), classes: new Set() });
-    }
-    teacherDetails.get(c.form_teacher)!.roles.add("FORM");
-    teacherDetails.get(c.form_teacher)!.classes.add(c.classroom);
-  });
-
-  data.halaqah_lists.forEach((h) => {
-    teachersToProcess.add(h.teacher);
-    if (!teacherDetails.has(h.teacher)) {
-      teacherDetails.set(h.teacher, { roles: new Set(), classes: new Set() });
-    }
-    teacherDetails.get(h.teacher)!.roles.add("TAHFIZ");
-    teacherDetails.get(h.teacher)!.classes.add(h.halaqah_name);
-  });
-
-  // Collect Students
-  for (const c of data.class_lists) {
-    const level = mapLevel(c.level);
-    if (!level) {
-      console.warn(`Warning: Could not map level '${c.level}' for classroom '${c.classroom}'`);
-      continue;
-    }
-    for (const s of c.students) {
-      if (studentsToProcess.has(s)) {
-        console.warn(`Warning: Student '${s}' appears in multiple classes. Using the last one.`);
-      }
-      studentsToProcess.set(s, { level, classroom: c.classroom });
-    }
-  }
-
-  console.log(`Found ${teachersToProcess.size} unique teachers.`);
-  console.log(`Found ${studentsToProcess.size} unique students.`);
-
-  // 3. Pre-fetch existing users to avoid N+1 queries in transaction
-  const allUsers = await prisma.users.findMany();
-  const usersByName = new Map<string, any>();
-  const usersByEmail = new Set<string>();
-
-  for (const user of allUsers) {
-    usersByName.set(user.name.toLowerCase(), user);
-    usersByEmail.add(user.email.toLowerCase());
-  }
-
-  // Prepare operations
-  const teacherCreates: any[] = [];
-  const teacherUpdates: { id: string; data: any }[] = [];
-  const studentCreates: any[] = [];
-  const studentUpdates: { id: string; data: any }[] = [];
+  // Read JSON file
+  const jsonPath = path.join(__dirname, "real-data.json");
+  const rawData = fs.readFileSync(jsonPath, "utf-8");
+  const data = JSON.parse(rawData);
 
   const hashedPassword = await bcrypt.hash("password123", 10);
 
-  // Process Teachers
-  for (const teacherName of teachersToProcess) {
-    const existingTeacher = usersByName.get(teacherName.toLowerCase());
-    const details = teacherDetails.get(teacherName) || { roles: new Set<string>(), classes: new Set<string>() };
-    const teacherRoles = Array.from(details.roles);
-    const classesTaught = Array.from(details.classes);
+  // Track created emails to avoid duplicates
+  const createdEmails = new Set<string>();
 
-    if (existingTeacher && existingTeacher.role === Role.TEACHER) {
-      console.log(`[UPDATE] Teacher: ${teacherName} -> Roles: [${teacherRoles.join(", ")}], Classes: [${classesTaught.join(", ")}], Employment: FULL_TIME`);
-      teacherUpdates.push({
-          id: existingTeacher.id,
-          data: {
-              teacherRoles,
-              classesTaught,
-              employmentType: EmploymentType.FULL_TIME,
-              updatedAt: new Date(),
-          }
-      });
-    } else {
-      const email = generateEmail(teacherName, Role.TEACHER);
-      if (usersByEmail.has(email)) {
-        console.warn(`[SKIP] Cannot create teacher '${teacherName}', email '${email}' already taken.`);
-        continue;
-      }
-      
-      console.log(`[CREATE] Teacher: ${teacherName} (${email}) -> Roles: [${teacherRoles.join(", ")}], Classes: [${classesTaught.join(", ")}], Employment: FULL_TIME`);
-      usersByEmail.add(email); // Reserve email
-      teacherCreates.push({
+  // 1. Process Class Lists (Students & Form Teachers)
+  for (const cls of data.class_lists) {
+    console.log(`Processing ${cls.level} - ${cls.classroom}...`);
+    
+    // Create/Update Form Teacher
+    const teacherName = cls.form_teacher;
+    let teacherEmail = generateEmail(teacherName, Role.TEACHER);
+    
+    // Ensure unique email
+    let counter = 1;
+    while (createdEmails.has(teacherEmail)) {
+      teacherEmail = teacherEmail.replace(/@/, `${counter}@`);
+      counter++;
+    }
+    createdEmails.add(teacherEmail);
+
+    // Check if teacher exists (by name to avoid duplicate creation if run multiple times)
+    let teacher = await prisma.users.findFirst({ where: { name: teacherName, role: Role.TEACHER } });
+    
+    if (!teacher) {
+      teacher = await prisma.users.create({
+        data: {
           id: crypto.randomUUID(),
-          email,
+          email: teacherEmail,
           password: hashedPassword,
           name: teacherName,
           role: Role.TEACHER,
-          teacherRoles,
-          classesTaught,
+          teacherRoles: ["FORM"],
+          classesTaught: [cls.classroom],
           employmentType: EmploymentType.FULL_TIME,
           updatedAt: new Date(),
+        }
       });
-    }
-  }
-
-  // Process Students
-  for (const [studentName, info] of studentsToProcess) {
-    const existingStudent = usersByName.get(studentName.toLowerCase());
-
-    if (existingStudent && existingStudent.role === Role.STUDENT) {
-      console.log(`[UPDATE] Student: ${studentName} -> Level: ${info.level}, Class: ${info.classroom}`);
-      studentUpdates.push({
-        id: existingStudent.id,
-        data: {
-          level: info.level,
-          className: info.classroom,
-          updatedAt: new Date(),
-        },
-      });
+      console.log(`   ✅ Created Form Teacher: ${teacherName}`);
     } else {
-      const email = generateEmail(studentName, Role.STUDENT);
-      if (usersByEmail.has(email)) {
-        console.warn(`[SKIP] Cannot create student '${studentName}', email '${email}' already taken.`);
-        continue;
-      }
-
-      console.log(`[CREATE] Student: ${studentName} (${email}) -> Level: ${info.level}, Class: ${info.classroom}`);
-      usersByEmail.add(email); // Reserve email
-      studentCreates.push({
-          id: crypto.randomUUID(),
-          email,
-          password: hashedPassword,
-          name: studentName,
-          role: Role.STUDENT,
-          level: info.level,
-          className: info.classroom,
-          updatedAt: new Date(),
-      });
+        // Update existing teacher's classes if needed
+        const currentClasses = teacher.classesTaught || [];
+        if (!currentClasses.includes(cls.classroom)) {
+            await prisma.users.update({
+                where: { id: teacher.id },
+                data: { classesTaught: { push: cls.classroom } }
+            });
+        }
+        console.log(`   ℹ️  Teacher exists: ${teacherName}`);
     }
-  }
 
-  // 4. Execute Transaction
-  try {
-    await prisma.$transaction(async (tx) => {
-       const initialUserCount = await tx.users.count();
-       console.log(`Initial user count: ${initialUserCount}`);
-
-       if (!isDryRun) {
-          for (const data of teacherCreates) {
-             await tx.users.create({ data });
-          }
-          for (const update of teacherUpdates) {
-             await tx.users.update({ where: { id: update.id }, data: update.data });
-          }
-          for (const data of studentCreates) {
-             await tx.users.create({ data });
-          }
-          for (const update of studentUpdates) {
-             await tx.users.update({ where: { id: update.id }, data: update.data });
-          }
-       }
-
-       if (!isDryRun) {
-        const finalUserCount = await tx.users.count();
-        console.log(`Final user count: ${finalUserCount}`);
-        console.log(`Net change: ${finalUserCount - initialUserCount}`);
-      } else {
-         console.log("Dry run completed. No changes committed.");
-      }
+    // Process Students
+    for (const studentName of cls.students) {
+      let studentEmail = generateEmail(studentName, Role.STUDENT);
       
-      // Force rollback if dry run to be absolutely safe
-      if (isDryRun) {
-         throw new Error("DRY_RUN_ROLLBACK");
+      // Ensure unique email
+      let sCounter = 1;
+      while (createdEmails.has(studentEmail)) {
+        studentEmail = studentEmail.replace(/@/, `${sCounter}@`);
+        sCounter++;
       }
-    }, {
-      timeout: 20000
-    });
-  } catch (error: any) {
-    if (error.message === "DRY_RUN_ROLLBACK") {
-      console.log("Transaction rolled back (Dry Run).");
-    } else {
-      console.error("Migration failed:", error);
-      process.exit(1);
+      createdEmails.add(studentEmail);
+
+      const existingStudent = await prisma.users.findFirst({ where: { name: studentName, role: Role.STUDENT } });
+      
+      if (!existingStudent) {
+        await prisma.users.create({
+          data: {
+            id: crypto.randomUUID(),
+            email: studentEmail,
+            password: hashedPassword,
+            name: studentName,
+            role: Role.STUDENT,
+            level: getLevel(cls.level),
+            className: cls.classroom,
+            // Fill required/sensible defaults for missing fields
+            icNumber: `T${Math.floor(1000000 + Math.random() * 9000000)}X`, // Mock IC
+            phoneNumber: "+65 8000 0000", // Mock Phone
+            parentName: "Parent of " + studentName.split(" ")[0], // Mock Parent
+            parentPhone: "+65 9000 0000", // Mock Parent Phone
+            updatedAt: new Date(),
+          }
+        });
+      } else {
+         // Update class info if changed
+         if (existingStudent.className !== cls.classroom) {
+             await prisma.users.update({
+                 where: { id: existingStudent.id },
+                 data: { className: cls.classroom, level: getLevel(cls.level) }
+             });
+         }
+      }
     }
-  } finally {
-    await prisma.$disconnect();
+    console.log(`   ✅ Processed ${cls.students.length} students.`);
   }
+
+  // 2. Process Halaqah Lists (Tahfiz Teachers)
+  console.log("\nProcessing Halaqah Lists...");
+  for (const halaqah of data.halaqah_lists) {
+      const teacherName = halaqah.teacher;
+      let teacherEmail = generateEmail(teacherName, Role.TEACHER);
+      
+      // Check if teacher already exists (e.g., might be a Form Teacher too)
+      let teacher = await prisma.users.findFirst({ where: { name: teacherName, role: Role.TEACHER } });
+
+      if (!teacher) {
+        // Create new Tahfiz Teacher
+        if (createdEmails.has(teacherEmail)) {
+             let counter = 1;
+             while (createdEmails.has(teacherEmail)) {
+                 teacherEmail = teacherEmail.replace(/@/, `${counter}@`);
+                 counter++;
+             }
+        }
+        createdEmails.add(teacherEmail);
+
+        teacher = await prisma.users.create({
+            data: {
+                id: crypto.randomUUID(),
+                email: teacherEmail,
+                password: hashedPassword,
+                name: teacherName,
+                role: Role.TEACHER,
+                teacherRoles: ["TAHFIZ"],
+                classesTaught: [halaqah.halaqah_name],
+                employmentType: EmploymentType.PART_TIME, // Assumption for Tahfiz only
+                updatedAt: new Date(),
+            }
+        });
+        console.log(`   ✅ Created Tahfiz Teacher: ${teacherName}`);
+      } else {
+          // Update existing teacher
+          const roles = teacher.teacherRoles || [];
+          if (!roles.includes("TAHFIZ")) {
+              roles.push("TAHFIZ");
+          }
+          const classes = teacher.classesTaught || [];
+          if (!classes.includes(halaqah.halaqah_name)) {
+              classes.push(halaqah.halaqah_name);
+          }
+          
+          await prisma.users.update({
+              where: { id: teacher.id },
+              data: { teacherRoles: roles, classesTaught: classes }
+          });
+          console.log(`   🔄 Updated Teacher roles: ${teacherName}`);
+      }
+
+      // We don't need to re-create students, but we could link them to Halaqah if we had a specific field. 
+      // For now, the student-halaqah relationship is implied by the teacher's class list or can be added to student record if schema supports it.
+      // Assuming 'className' is for academic class. We can append to it or use a separate field if it existed.
+      // For this migration, we ensure the students exist (they should from class lists).
+      
+      for (const studentName of halaqah.students) {
+          const student = await prisma.users.findFirst({ where: { name: studentName, role: Role.STUDENT } });
+          if (!student) {
+              console.warn(`   ⚠️  Warning: Student ${studentName} in Halaqah list not found in Class lists! Creating now...`);
+              // Create if missing (e.g. data inconsistency)
+              let studentEmail = generateEmail(studentName, Role.STUDENT);
+               if (createdEmails.has(studentEmail)) {
+                    let sCounter = 1;
+                    while (createdEmails.has(studentEmail)) {
+                        studentEmail = studentEmail.replace(/@/, `${sCounter}@`);
+                        sCounter++;
+                    }
+               }
+               createdEmails.add(studentEmail);
+               
+               await prisma.users.create({
+                  data: {
+                    id: crypto.randomUUID(),
+                    email: studentEmail,
+                    password: hashedPassword,
+                    name: studentName,
+                    role: Role.STUDENT,
+                    level: Level.SECONDARY_1, // Default unknown
+                    className: "Unknown Class",
+                    icNumber: `T${Math.floor(1000000 + Math.random() * 9000000)}X`,
+                    phoneNumber: "+65 8000 0000",
+                    parentName: "Parent",
+                    parentPhone: "+65 9000 0000",
+                    updatedAt: new Date(),
+                  }
+               });
+          }
+      }
+  }
+
+  console.log("\n✅ Real data migration completed successfully!");
 }
 
-main();
-
+main()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
+  });

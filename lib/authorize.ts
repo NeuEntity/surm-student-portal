@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import type { User } from "next-auth";
+import { logActivity, AuditAction, AuditSeverity } from "@/lib/audit-logger";
 
 type AuthorizeInput = {
   email: string;
@@ -21,6 +22,19 @@ export async function authorizeUser({ email, password }: AuthorizeInput): Promis
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       console.error("Invalid password for email:", email);
+      
+      // Log failed login attempt
+      await logActivity({
+        action: AuditAction.LOGIN,
+        entityId: user.id,
+        entityType: "USER",
+        actorId: user.id,
+        actorName: user.name,
+        actorRole: user.role,
+        severity: AuditSeverity.WARNING,
+        details: { status: "FAILED", reason: "Invalid password" }
+      });
+      
       return null;
     }
 
@@ -35,6 +49,19 @@ export async function authorizeUser({ email, password }: AuthorizeInput): Promis
     };
     
     console.log("Authorized user:", result.id, result.email, result.role);
+    
+    // Log successful login
+    await logActivity({
+        action: AuditAction.LOGIN,
+        entityId: user.id,
+        entityType: "USER",
+        actorId: user.id,
+        actorName: user.name,
+        actorRole: user.role,
+        severity: AuditSeverity.INFO,
+        details: { status: "SUCCESS" }
+    });
+
     return result;
   } catch (error) {
     console.error("Error in authorizeUser:", error);

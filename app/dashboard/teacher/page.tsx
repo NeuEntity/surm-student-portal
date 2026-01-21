@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Level, Subject, SubmissionType } from "@prisma/client";
 import { Plus } from "lucide-react";
 import { revalidatePath } from "next/cache";
-import { LogoutButton } from "@/components/logout-button";
+import { ProfileMenu } from "@/components/profile/profile-menu";
 import TeacherDashboardClient from "@/components/dashboard/teacher-dashboard-client";
 import { CreateMaterialForm } from "@/components/dashboard/create-material-form";
 import { CreateAssignmentForm } from "@/components/dashboard/create-assignment-form";
@@ -297,7 +297,7 @@ export default async function TeacherDashboardPage() {
               <p className="text-lg text-white/90 font-sans">Welcome, {user.name}</p>
             </div>
             <div>
-              <LogoutButton />
+              <ProfileMenu user={user} />
             </div>
           </div>
         </div>

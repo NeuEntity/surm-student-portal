@@ -10,7 +10,8 @@ import {
   CalendarCheck,
   Settings,
   LogOut,
-  Menu
+  Menu,
+  ShieldAlert
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -36,6 +37,11 @@ const sidebarItems = [
     title: "Leave Management",
     href: "/dashboard/admin/leaves",
     icon: CalendarCheck,
+  },
+  {
+    title: "Audit Logs",
+    href: "/dashboard/admin/audit-logs",
+    icon: ShieldAlert,
   },
 ];
 

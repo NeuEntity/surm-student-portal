@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BookOpen, FileText, Upload, Calendar, Video, File, AlertCircle, GraduationCap, Plus, Play, ExternalLink, Maximize2, X } from "lucide-react";
 import { format } from "date-fns";
-import { LogoutButton } from "@/components/logout-button";
+import { ProfileMenu } from "@/components/profile/profile-menu";
 import { validateICNumber, validateRequiredText, validateDateParts } from "@/lib/validation";
 
 type MaterialAttachment = {
@@ -66,6 +66,7 @@ type Grade = {
 interface StudentDashboardProps {
   level: Level;
   userName: string;
+  userEmail?: string;
   materials: Material[];
   assignments: Assignment[];
   submissions: Submission[];
@@ -82,7 +83,7 @@ const SUBJECTS = [
   { value: "HADIS", label: "Hadis" },
   { value: "MUSTOLAH_HADIS", label: "Mustolah Hadis" },
   { value: "ENGLISH", label: "English" },
-  { value: "MALAY", label: "Malay" },
+  { value: "MALAY", label: "Bahasa Melayu" },
   { value: "ARABIC", label: "Arabic" },
   { value: "MATHS", label: "Maths" },
   { value: "IRK", label: "IRK" },
@@ -112,6 +113,7 @@ const buildVimeoEmbedUrl = (url: string) => {
 export default function StudentDashboard({
   level,
   userName,
+  userEmail,
   materials,
   assignments,
   submissions,
@@ -763,7 +765,7 @@ export default function StudentDashboard({
               <p className="text-base sm:text-lg text-white/90 font-sans">{levelName}</p>
             </div>
             <div className="flex-shrink-0">
-              <LogoutButton />
+              <ProfileMenu user={{ name: userName, email: userEmail }} />
             </div>
           </div>
         </div>

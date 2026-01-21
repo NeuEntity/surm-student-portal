@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role, Level } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { logActivity, AuditAction, AuditSeverity } from "@/lib/audit-logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -129,14 +130,14 @@ export async function POST(request: NextRequest) {
     `;
 
     // Log action
-    await prisma.$executeRaw`
-      INSERT INTO audit_logs (
-        id, action, "targetId", "targetType", "actorId", details, "createdAt"
-      ) VALUES (
-        ${crypto.randomUUID()}, 'CREATE_USER', ${id}, 'USER', ${user.id}, 
-        ${JSON.stringify({ name, email, role })}::jsonb, ${now}
-      )
-    `;
+    await logActivity({
+        action: AuditAction.CREATE,
+        entityId: id,
+        entityType: "USER",
+        details: { name, email, role },
+        actorId: user.id,
+        severity: AuditSeverity.INFO
+    });
 
     // Return the created user object (approximate)
     const newUser = {

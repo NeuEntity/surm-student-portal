@@ -23,12 +23,27 @@ export default async function LoginPage() {
             <LoginForm />
             <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-[var(--surm-beige)] rounded-lg">
               <p className="text-xs sm:text-sm font-semibold text-[var(--surm-text-dark)] mb-2 font-sans">Demo Accounts:</p>
-              <div className="text-xs text-[var(--surm-text-dark)]/80 space-y-1 font-sans">
-                <p className="break-words">Student 1: student1@surm.edu</p>
-                <p className="break-words">Student 2: student2@surm.edu</p>
-                <p className="break-words">Teacher: teacher@surm.edu</p>
-                <p className="break-words">Admin: admin@surm.edu.sg</p>
-                <p className="mt-2 font-semibold">Password for all: password123</p>
+              <div className="text-xs text-[var(--surm-text-dark)]/80 space-y-2 font-sans">
+                <div>
+                  <p className="font-semibold">Students:</p>
+                  <p className="break-words">Sec 1: student1@surm.edu</p>
+                  <p className="break-words">Sec 2: student2@surm.edu</p>
+                  <p className="break-words">Sec 3: student3@surm.edu</p>
+                  <p className="break-words">Sec 4: student4@surm.edu</p>
+                </div>
+                <div>
+                  <p className="font-semibold">Teachers:</p>
+                  <p className="break-words">Multi-Role: teacher@surm.edu</p>
+                  <p className="break-words">Form Only: teacher.form@surm.edu</p>
+                  <p className="break-words">Tahfiz Only: teacher.tahfiz@surm.edu</p>
+                  <p className="break-words">Subject Only: teacher.subject@surm.edu</p>
+                  <p className="break-words">Principal: principal@surm.edu.sg</p>
+                </div>
+                <div>
+                  <p className="font-semibold">Admin:</p>
+                  <p className="break-words">admin@surm.edu.sg</p>
+                </div>
+                <p className="mt-2 font-semibold border-t border-[var(--surm-text-dark)]/10 pt-2">Password for all: password123</p>
               </div>
             </div>
           </div>

@@ -19,7 +19,7 @@ const SUBJECTS = [
   { value: Subject.HADIS, label: "Hadis" },
   { value: Subject.MUSTOLAH_HADIS, label: "Mustolah Hadis" },
   { value: Subject.ENGLISH, label: "English" },
-  { value: Subject.MALAY, label: "Malay" },
+  { value: Subject.MALAY, label: "Bahasa Melayu" },
   { value: Subject.ARABIC, label: "Arabic" },
   { value: Subject.MATHS, label: "Maths" },
   { value: Subject.IRK, label: "IRK" },

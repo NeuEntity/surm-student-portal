@@ -115,7 +115,6 @@ export default function AdminUserManagement({
   const [uploading, setUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState<any>(null);
   const [levelFilter, setLevelFilter] = useState<Level | "all">("all");
-  const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
 
   // State for multi-selects
   const [selectedTeacherRoles, setSelectedTeacherRoles] = useState<string[]>([]);
@@ -177,9 +176,6 @@ export default function AdminUserManagement({
   // Filter users by level and role
   const filteredUsers = users.filter(user => {
     if (levelFilter !== "all" && user.level !== levelFilter) {
-      return false;
-    }
-    if (roleFilter !== "all" && user.role !== roleFilter) {
       return false;
     }
     return true;
@@ -566,19 +562,6 @@ export default function AdminUserManagement({
             
             <TabsContent value="teachers">
                 <div className="rounded-xl overflow-hidden">
-                    {/* Teacher Filters */}
-                    <div className="mb-4 flex items-center gap-2">
-                         <Label className="text-sm font-semibold text-[var(--surm-text-dark)]">Filter by Role:</Label>
-                         <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as Role | "all")}>
-                             <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                             <SelectContent>
-                                 <SelectItem value="all">All Roles</SelectItem>
-                                 <SelectItem value="TEACHER">Teachers</SelectItem>
-                                 <SelectItem value="ADMIN">Admins</SelectItem>
-                             </SelectContent>
-                         </Select>
-                    </div>
-
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -590,7 +573,7 @@ export default function AdminUserManagement({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredUsers.filter(u => u.role === Role.TEACHER || u.role === Role.ADMIN).map((user) => (
+                            {filteredUsers.filter(u => u.role === Role.TEACHER).map((user) => (
                                 <TableRow key={user.id}>
                                     <TableCell className="font-medium">{user.name}</TableCell>
                                     <TableCell>{user.email}</TableCell>

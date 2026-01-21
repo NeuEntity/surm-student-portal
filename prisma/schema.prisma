@@ -99,19 +99,29 @@ model users {
   teacherRoles       String[]             @default([])
   classesTaught      String[]             @default([])
   employmentType     EmploymentType?
+  auditLogs          audit_logs[]
 }
 
 model audit_logs {
-  id        String   @id
-  action    String
-  targetId  String
-  targetType String
-  actorId   String
-  details   Json?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  action      String
+  entityId    String
+  entityType  String
+  actorId     String
+  actorName   String?
+  actorRole   String?
+  ipAddress   String?
+  userAgent   String?
+  details     Json?
+  status      String   @default("SUCCESS")
+  createdAt   DateTime @default(now())
 
-  @@index([targetId])
+  actor       users    @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
   @@index([actorId])
+  @@index([createdAt])
+  @@index([action])
 }
 
 enum Level {

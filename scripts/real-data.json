@@ -1,0 +1,197 @@
+{ 
+   "institution": "MADRASAH TAHFIZ AL-QURAN, Sekolah Ugama Radin Mas", 
+   "academic_year": "2026", 
+   "metadata": { 
+     "total_students": 54, 
+     "demographics": { 
+       "banin_boys": 19, 
+       "banat_girls": 35 
+     }, 
+     "last_updated": "24 December 2025", 
+     "version": "NL2026/24122025" 
+   }, 
+   "class_lists": [ 
+     { 
+       "level": "Secondary 1", 
+       "classroom": "Classroom 1", 
+       "form_teacher": "Ustazah Noor Lindah", 
+       "total_students": 17, 
+       "breakdown": "5 banin, 12 banat", 
+       "students": [ 
+         "Aasjad Bin Rami", 
+         "Adwa Rafaat Bin Rahmat", 
+         "Alisya Sarah Binte Mohamad Hisham", 
+         "Amy Darla Binti Mohammad Azmi", 
+         "Haniyah Mohamed Kazali", 
+         "Huda Binti Muhammad Yazid", 
+         "Muhammad Eshan Bin Muhamed Idros", 
+         "Muhammad Uwais Al-Qami Bin Zainal Abideen", 
+         "Nuha Solehah Binti Mohd Syafiq", 
+         "Nur Anisa Binte Mohammed Nurizhamshah", 
+         "Nur Iman Binte Jamal Abdat", 
+         "Nur Qaseh Insyirah Binte Abdul Teffy", 
+         "Rushdiyyatuz Zahra Binte Muhammad Rosdi", 
+         "Saarah Binte Muhammad Ridwan", 
+         "Safiya Humaira Alisha Binte Mohamed Hakim Ali", 
+         "Sumayyah Binte Muhammad Muzzammil", 
+         "Syed Muhammad Hady Bin Syed Ashraff Ali" 
+       ] 
+     }, 
+     { 
+       "level": "Secondary 2", 
+       "classroom": "Classroom 2", 
+       "form_teacher": "Teacher Haseenah", 
+       "total_students": 17, 
+       "breakdown": "6 banin, 11 banat", 
+       "students": [ 
+         "Ahmad Nasrullah Bin Abdul Aziz", 
+         "Ashaz Zakariyya Ibnu Muhammad Nazmi", 
+         "Fatheen Solehah Binte Mohd Fadil", 
+         "Hussein Ariffuddin Khan", 
+         "Izz Zayani Binte Johan", 
+         "Laila Binte Saifudeen", 
+         "Nafeesah Thohirah Binte Mohamed Shafir", 
+         "Nuha Binte Muhammad Ridwan", 
+         "Nur Safiya Binte Noor Ariffin", 
+         "Nurmaghfirah Myiesha Binte Mohamed Maghrib", 
+         "Nursyaqeera Martina Bee Binte Mohd Ronnie Khan", 
+         "Qalesya Auliya Binte Muhamed Idros", 
+         "Siti Umairah Binte Ramlan", 
+         "Syafi Sirin Bin Rahmat Hidayat", 
+         "Umairah Binte Shamsuddin", 
+         "Uwais Bin Mohamed Junaidy", 
+         "Zafrel Khalish Bin Juneed" 
+       ] 
+     }, 
+     { 
+       "level": "Secondary 3", 
+       "classroom": "Classroom 3 & 4", 
+       "form_teacher": "Ustazah Noor Lindah", 
+       "total_students": 16, 
+       "breakdown": "8 banin, 8 banat", 
+       "students": [ 
+         "Adeeba Akbar Shaikh", 
+         "Ahmed Bin Rami", 
+         "H Aseela", 
+         "Hassan Afeefuddin Khan", 
+         "Ilman Dzulfiqar Bin Othman", 
+         "M. Aafiyah Al Zahra", 
+         "Mohamad Mu'adz Koenitz Bin Mohamad Fahamy", 
+         "Muhammad Arash Bin Zahari", 
+         "Muhammad Nur Mirza Bin Musa", 
+         "Nor Lathifah Isra Binti Ismail", 
+         "Qaireen Aliya Binte Muhamed Idros", 
+         "Quraisyah Husin", 
+         "Safiyyah Bint Abdur Rahman", 
+         "Surfina binte Mohamed Subhan", 
+         "Syed Muhammad Hazeeq Bin Syed Ashraff Ali", 
+         "Umran Bin Amran" 
+       ] 
+     }, 
+     { 
+       "level": "Secondary 4", 
+       "classroom": "Classroom Kaca", 
+       "form_teacher": "Teacher Haseenah", 
+       "total_students": 4, 
+       "breakdown": "4 banat", 
+       "students": [ 
+         "Iman Hanania Binte Borhan", 
+         "Imrafenah Khan Binte Imran", 
+         "Najwaa Binte Mohamed Junaidy", 
+         "Nur Sajdah Binte Mohamed Shafir" 
+       ] 
+     } 
+   ], 
+   "halaqah_lists": [ 
+     { 
+       "halaqah_name": "Halaqah Abdullah Ibn Mas'ood", 
+       "teacher": "Ustaz Md Fairooz", 
+       "students": [ 
+         "Ahmad Nasrullah Bin Abdul Aziz", 
+         "Ashaz Zakariyya Ibnu Muhammad Nazmi", 
+         "Hussein Ariffuddin Khan", 
+         "Syafi Sirin Bin Rahmat Hidayat", 
+         "Uwais Bin Mohamed Junaidy", 
+         "Zafrel Khalish Bin Juneed", 
+         "Hassan Afeefuddin Khan", 
+         "Ilman Dzulfiqar Bin Othman", 
+         "Muhammad Nur Mirza Bin Musa", 
+         "Umran Bin Amran" 
+       ] 
+     }, 
+     { 
+       "halaqah_name": "Halaqah Ubay Ibn Ka'ab", 
+       "teacher": "Ustaz Md 'Arif", 
+       "students": [ 
+         "Aasjad Bin Rami", 
+         "Adwa Rafaat Bin Rahmat", 
+         "Muhammad Eshan Bin Muhamed Idros", 
+         "Muhammad Uwais Al-Qarni Bin Zainal Abideen", 
+         "Syed Muhammad Hady Bin Syed Ashraff Ali", 
+         "Ahmed Bin Rami", 
+         "Mohamad Mu'adz Koenitz Bin Mohamad Fahamy", 
+         "Muhammad Arash Bin Zahari", 
+         "Syed Muhammad Hazeeq Bin Syed Ashraff Ali" 
+       ] 
+     }, 
+     { 
+       "halaqah_name": "Halaqah Khadijah Bint Khuwailid", 
+       "teacher": "Ustazah Anisah", 
+       "students": [ 
+         "Amy Darla Binti Mohammad Azmi", 
+         "Nur Qaseh Insyirah Binte Abdul Teffy", 
+         "Izz Zayani Binte Johan", 
+         "Laila Binte Saifudeen", 
+         "Nur Safiya Binte Noor Ariffin", 
+         "Nafeesah Thohirah Binte Mohamed Shafir", 
+         "Nuha Binte Muhammad Ridwan", 
+         "Qalesya Auliya Binte Muhamed Idros", 
+         "Surfina binte Mohamed Subhan" 
+       ] 
+     }, 
+     { 
+       "halaqah_name": "Halaqah Sofiyyah Bint Huyay", 
+       "teacher": "Ustazah Nur 'Adilah", 
+       "students": [ 
+         "Rushdiyyatuz Zahra Binte Muhammad Rosdi", 
+         "Safiya Humaira Alisha Binte Mohamed Hakim Ali", 
+         "Fatheen Solehah Binte Mohd Fadil", 
+         "Nursyaqeera Martina Bee Binte Mohd Ronnie Khan", 
+         "Iman Hanania Binte Borhan", 
+         "Imrafenah Khan Binte Imran", 
+         "Najwaa Binte Mohamed Junaidy", 
+         "Nur Sajdah Binte Mohamed Shafir" 
+       ] 
+     }, 
+     { 
+       "halaqah_name": "Halaqah 'Aisyah Bint Abu Bakar", 
+       "teacher": "Ustazah Nur Hadirah", 
+       "students": [ 
+         "Alisya Sarah Binte Mohamad Hisham", 
+         "Nur Iman Binte Jamal Abdat", 
+         "Huda Binti Muhammad Yazid", 
+         "Saarah Binte Muhammad Ridwan", 
+         "Sumayyah Binte Muhammad Muzzammil", 
+         "Nurmaghfirah Myiesha Binte Mohamed Maghrib", 
+         "Adeeba Akbar Shaikh", 
+         "M. Aafiyah Al Zahra", 
+         "Qaireen Aliya Binte Muhamed Idros", 
+         "Quraisyah Husin" 
+       ] 
+     }, 
+     { 
+       "halaqah_name": "Halaqah Hafsah Bint 'Umar", 
+       "teacher": "Ustazah Nursyahidah", 
+       "students": [ 
+         "Haniyah Mohamed Kazali", 
+         "Nuha Solehah Binti Mohd Syafiq", 
+         "Nur Anisa Binte Mohammed Nurizhamshah", 
+         "Siti Umairah Binte Ramlan", 
+         "Umairah Binte Shamsuddin", 
+         "H Aseela", 
+         "Nor Lathifah Isra Binti Ismail", 
+         "Safiyyah Bint Abdur Rahman" 
+       ] 
+     } 
+   ] 
+ }

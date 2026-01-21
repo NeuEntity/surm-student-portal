@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Role, Level } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { logActivity, AuditAction, AuditSeverity } from "@/lib/audit-logger";
 
 export async function GET(
   request: NextRequest,
@@ -172,21 +173,20 @@ export async function PUT(
     `;
 
     // Log action to audit_logs
-    await prisma.$executeRaw`
-      INSERT INTO audit_logs (
-        id, action, "targetId", "targetType", "actorId", details, "createdAt"
-      ) VALUES (
-        ${crypto.randomUUID()}, 'UPDATE_USER', ${id}, 'USER', ${user.id}, 
-        ${JSON.stringify({ 
+    await logActivity({
+        action: AuditAction.UPDATE,
+        entityId: id,
+        entityType: "USER",
+        details: { 
             changes: { 
                 name: name ? 'changed' : 'unchanged',
                 role: role ? 'changed' : 'unchanged',
                 permissions: (teacherRoles || classesTaught) ? 'changed' : 'unchanged'
             } 
-        })}::jsonb, 
-        ${now}
-      )
-    `;
+        },
+        actorId: user.id,
+        severity: AuditSeverity.INFO
+    });
 
     // Fetch updated user to return
     const updatedUsers = await prisma.$queryRaw<any[]>`
@@ -242,14 +242,14 @@ export async function DELETE(
     await prisma.$executeRaw`DELETE FROM users WHERE id = ${id}`;
     
     // Log action
-    await prisma.$executeRaw`
-      INSERT INTO audit_logs (
-        id, action, "targetId", "targetType", "actorId", details, "createdAt"
-      ) VALUES (
-        ${crypto.randomUUID()}, 'DELETE_USER', ${id}, 'USER', ${user.id}, 
-        ${JSON.stringify({ deleted: true })}::jsonb, ${new Date()}
-      )
-    `;
+    await logActivity({
+        action: AuditAction.DELETE,
+        entityId: id,
+        entityType: "USER",
+        details: { deleted: true },
+        actorId: user.id,
+        severity: AuditSeverity.WARNING 
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
