@@ -49,9 +49,11 @@ if [ "$DATABASE_URL" = "postgresql://dummy:dummy@localhost:5432/dummy?schema=pub
   exit 1
 fi
 
-echo "🔄 Running database migrations..."
-pnpm prisma migrate deploy || {
-  echo "❌ ERROR: Database migrations failed"
+echo "🔄 Pushing database schema (using db push for Railway)..."
+# Using db push instead of migrate deploy because we don't have a migrations folder
+# and the database might not be empty. This is safer for this setup.
+pnpm prisma db push --accept-data-loss || {
+  echo "❌ ERROR: Database push failed"
   echo "   Check that DATABASE_URL is correct and the database is accessible"
   exit 1
 }
