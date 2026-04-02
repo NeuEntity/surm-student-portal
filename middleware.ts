@@ -148,8 +148,14 @@ export async function middleware(req: NextRequest) {
       if (level) {
         return NextResponse.redirect(new URL(`/dashboard/${level}`, req.url));
       }
-      // If student has no level, redirect to login
-      return NextResponse.redirect(new URL("/login", req.url));
+      // If student has no level, redirect to login AND clear bad cookies to prevent infinite loop
+      const response = NextResponse.redirect(new URL("/login", req.url));
+      // Clear all possible session cookies
+      response.cookies.delete("next-auth.session-token");
+      response.cookies.delete("__Secure-next-auth.session-token");
+      response.cookies.delete("authjs.session-token");
+      response.cookies.delete("__Secure-authjs.session-token");
+      return response;
     } else if (user.role === "TEACHER") {
       return NextResponse.redirect(new URL("/dashboard/teacher", req.url));
     } else if (user.role === "ADMIN") {
