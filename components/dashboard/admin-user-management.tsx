@@ -342,8 +342,8 @@ export default function AdminUserManagement({
   function downloadTemplate() {
     const templateData = [
       ["name", "email", "password", "role", "level", "icNumber", "phoneNumber", "parentName", "parentPhone", "className"],
-      ["Ahmad", "ahmad@surm.edu", "pass123", "STUDENT", "SECONDARY_1", "123", "012", "Abdullah", "019", "5A"],
-      ["Ustaz", "teacher@surm.edu", "pass123", "TEACHER", "", "", "", "", "", ""],
+      ["Ahmad", "ahmad@surm.edu.sg", "pass123", "STUDENT", "SECONDARY_1", "123", "012", "Abdullah", "019", "5A"],
+      ["Ustaz", "teacher@surm.edu.sg", "pass123", "TEACHER", "", "", "", "", "", ""],
     ];
     const csv = templateData.map((row) => row.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -453,7 +453,7 @@ export default function AdminUserManagement({
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2"><Label htmlFor="create-name">Full Name *</Label><Input id="create-name" name="name" required /></div>
-                <div className="space-y-2"><Label htmlFor="create-email">Email *</Label><Input id="create-email" name="email" type="email" required /></div>
+                <div className="space-y-2"><Label htmlFor="create-email">Email *</Label><Input id="create-email" name="email" type="email" placeholder="name@surm.edu.sg" required /></div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2"><Label htmlFor="create-password">Password *</Label><Input id="create-password" name="password" type="password" required /></div>

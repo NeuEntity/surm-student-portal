@@ -19,7 +19,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { title, description, level, subject, dueDate } = body;
+    const { title, description, level, subject, dueDate, completed, fileUrl, videoUrl } = body;
 
     // Check if assignment exists and belongs to this teacher
     const existingAssignment = await prisma.assignments.findUnique({
@@ -41,16 +41,19 @@ export async function PUT(
       );
     }
 
+    const updateData: any = { updatedAt: new Date() };
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (level !== undefined) updateData.level = level;
+    if (subject !== undefined) updateData.subject = subject;
+    if (dueDate !== undefined) updateData.dueDate = new Date(dueDate);
+    if (completed !== undefined) updateData.completed = completed;
+    if (fileUrl !== undefined) updateData.fileUrl = fileUrl || null;
+    if (videoUrl !== undefined) updateData.videoUrl = videoUrl || null;
+
     const assignment = await prisma.assignments.update({
       where: { id },
-      data: {
-        title,
-        description,
-        level,
-        subject,
-        dueDate: new Date(dueDate),
-        updatedAt: new Date(),
-      },
+      data: updateData,
     });
 
     return NextResponse.json(assignment);

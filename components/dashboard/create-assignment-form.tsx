@@ -127,6 +127,16 @@ export function CreateAssignmentForm({ createAssignment }: { createAssignment: (
         <Label htmlFor="assign-due">Due Date *</Label>
         <Input id="assign-due" name="dueDate" type="date" required />
       </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="assign-fileUrl">File URL</Label>
+          <Input id="assign-fileUrl" name="fileUrl" type="url" placeholder="https://..." />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="assign-videoUrl">Video URL</Label>
+          <Input id="assign-videoUrl" name="videoUrl" type="url" placeholder="https://..." />
+        </div>
+      </div>
       <Button type="submit" className="w-full rounded-full bg-white text-[var(--surm-green)] hover:bg-[var(--surm-paper)]" disabled={isSubmitting}>
         <Plus className="w-4 h-4 mr-2" />
         {isSubmitting ? "Creating..." : "Create Assignment"}

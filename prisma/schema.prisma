@@ -17,6 +17,9 @@ model assignments {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime
   createdBy   String?
+  completed   Boolean       @default(false)
+  fileUrl     String?
+  videoUrl    String?
   users       users?        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   grades      grades[]
   submissions submissions[]
@@ -164,6 +167,7 @@ enum SubmissionType {
   LETTERS
   ASSIGNMENT
   ANNUAL_LEAVE
+  CHILD_CARE_LEAVE
 }
 
 enum EmploymentType {

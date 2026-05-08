@@ -248,6 +248,7 @@ export default function AdminLeaveManagement() {
                                     <SelectItem value="ALL">All Types</SelectItem>
                                     <SelectItem value={SubmissionType.ANNUAL_LEAVE}>Annual Leave</SelectItem>
                                     <SelectItem value={SubmissionType.MEDICAL_CERT}>Medical Cert</SelectItem>
+                                    <SelectItem value={SubmissionType.CHILD_CARE_LEAVE}>Child Care Leave</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

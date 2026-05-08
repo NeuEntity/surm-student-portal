@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, level, subject, dueDate } = body;
+    const { title, description, level, subject, dueDate, fileUrl, videoUrl } = body;
 
     if (!title || !description || !level || !subject || !dueDate) {
       return NextResponse.json(
@@ -72,6 +72,8 @@ export async function POST(request: NextRequest) {
         level,
         subject,
         dueDate: new Date(dueDate),
+        fileUrl: fileUrl || null,
+        videoUrl: videoUrl || null,
         createdBy: user.id,
         updatedAt: new Date(),
       },

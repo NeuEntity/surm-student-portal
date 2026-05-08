@@ -58,6 +58,9 @@ type Assignment = {
   level: Level;
   subject: Subject;
   dueDate: Date;
+  completed?: boolean;
+  fileUrl?: string | null;
+  videoUrl?: string | null;
 };
 
 type Student = {
@@ -304,6 +307,25 @@ export default function TeacherDashboardClient({
     }
   }
 
+  async function handleCompleteAssignment(id: string, completed: boolean) {
+    try {
+      const res = await fetch(`/api/assignments/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed }),
+      });
+      if (res.ok) {
+        setAssignments(assignments.map(a => a.id === id ? { ...a, completed } : a));
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to update assignment");
+      }
+    } catch (error) {
+      console.error("Error updating assignment:", error);
+      alert("Failed to update assignment. Please try again.");
+    }
+  }
+
   async function handleUpdateMaterial(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editMaterial) return;
@@ -497,7 +519,6 @@ export default function TeacherDashboardClient({
         </TabsContent>
 
         <TabsContent value="assignments" className="space-y-4">
-           {/* ... Assignments Tab Content (Keep existing) ... */}
            <div className="flex flex-wrap items-center gap-4 mb-4">
             <div className="flex items-center gap-2">
               <Label htmlFor="assignments-level-filter" className="text-sm font-semibold text-[var(--surm-text-dark)]">Filter by Level:</Label>
@@ -520,74 +541,110 @@ export default function TeacherDashboardClient({
               </Select>
             </div>
           </div>
-          {filteredAssignments.length === 0 ? (
-            <div className="rounded-xl p-12 bg-white border border-[var(--surm-green)]/20 text-center">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-[var(--surm-text-dark)]/40" />
-              <p className="text-lg font-semibold text-[var(--surm-text-dark)] mb-2">No assignments yet</p>
-              <p className="text-sm text-[var(--surm-text-dark)]/60">Create your first assignment using the form above</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredAssignments.map((assignment) => {
-                const submissionsForAssignment = assignmentSubmissions.filter((sub) => sub.assignmentId === assignment.id);
-                return (
-                  <section key={assignment.id} className="rounded-xl p-6 bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex flex-col md:flex-row gap-6 items-start">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-serif font-semibold mb-2 text-[var(--surm-text-dark)]">{assignment.title}</h3>
-                        <p className="text-sm mb-3 font-sans description-text text-[var(--surm-text-dark)]/70">{assignment.description.substring(0, 150)}{assignment.description.length > 150 && "..."}</p>
-                        <div className="flex gap-4 text-xs font-sans text-[var(--surm-text-dark)]/60 mb-4">
-                          <span>{LEVELS.find((l) => l.value === assignment.level)?.label}</span>
-                          <span>{SUBJECTS.find((s) => s.value === assignment.subject)?.label}</span>
-                          <span>Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
-                        </div>
-                        {submissionsForAssignment.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-[var(--surm-green)]/20">
-                            <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)] mb-3">Student Submissions ({submissionsForAssignment.length})</p>
-                            <div className="space-y-3">
-                              {submissionsForAssignment.map((submission) => {
-                                const statusColor = submission.status === "APPROVED" ? "text-green-600 bg-green-50" : submission.status === "REJECTED" ? "text-red-600 bg-red-50" : "text-yellow-600 bg-yellow-50";
-                                const statusLabel = submission.status.charAt(0) + submission.status.slice(1).toLowerCase();
-                                return (
-                                  <div key={submission.id} className="rounded-lg p-3 bg-[var(--surm-paper)] border border-[var(--surm-green)]/10 flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)]">{submission.users.name}</p>
-                                        <span className={`text-xs font-sans px-2 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
-                                      </div>
-                                      <p className="text-xs font-sans text-[var(--surm-text-dark)]/60">{submission.users.email} • Submitted: {new Date(submission.createdAt).toLocaleString()}</p>
-                                    </div>
-                                    {submission.fileUrl && submission.fileUrl !== "no-file-uploaded" && (
-                                      <Button size="sm" variant="outline" onClick={() => window.open(submission.fileUrl, "_blank")} className="rounded-full ml-2">
-                                        <FileText className="w-4 h-4 mr-2" />View File
-                                      </Button>
+          <Tabs defaultValue="active" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="active">Active</TabsTrigger>
+              <TabsTrigger value="archive">Archive</TabsTrigger>
+            </TabsList>
+            {(["active", "archive"] as const).map((view) => {
+              const viewAssignments = filteredAssignments.filter(a => view === "archive" ? a.completed : !a.completed);
+              return (
+                <TabsContent key={view} value={view} className="space-y-4">
+                  {viewAssignments.length === 0 ? (
+                    <div className="rounded-xl p-12 bg-white border border-[var(--surm-green)]/20 text-center">
+                      <FileText className="w-12 h-12 mx-auto mb-4 text-[var(--surm-text-dark)]/40" />
+                      <p className="text-lg font-semibold text-[var(--surm-text-dark)] mb-2">{view === "archive" ? "No archived assignments" : "No assignments yet"}</p>
+                      <p className="text-sm text-[var(--surm-text-dark)]/60">{view === "archive" ? "Mark assignments as complete to archive them" : "Create your first assignment using the form above"}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {viewAssignments.map((assignment) => {
+                        const submissionsForAssignment = assignmentSubmissions.filter((sub) => sub.assignmentId === assignment.id);
+                        return (
+                          <section key={assignment.id} className="rounded-xl p-6 bg-white border border-[var(--surm-green)]/20 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex flex-col md:flex-row gap-6 items-start">
+                              <div className="flex-1">
+                                <h3 className="text-xl font-serif font-semibold mb-2 text-[var(--surm-text-dark)]">{assignment.title}</h3>
+                                <p className="text-sm mb-3 font-sans description-text text-[var(--surm-text-dark)]/70">{assignment.description.substring(0, 150)}{assignment.description.length > 150 && "..."}</p>
+                                <div className="flex gap-4 text-xs font-sans text-[var(--surm-text-dark)]/60 mb-2">
+                                  <span>{LEVELS.find((l) => l.value === assignment.level)?.label}</span>
+                                  <span>{SUBJECTS.find((s) => s.value === assignment.subject)?.label}</span>
+                                  <span>Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
+                                </div>
+                                {(assignment.fileUrl || assignment.videoUrl) && (
+                                  <div className="flex gap-3 mb-3">
+                                    {assignment.fileUrl && (
+                                      <a href={assignment.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                                        <FileText className="w-3 h-3" /> File
+                                      </a>
+                                    )}
+                                    {assignment.videoUrl && (
+                                      <a href={assignment.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                                        <FileText className="w-3 h-3" /> Video
+                                      </a>
                                     )}
                                   </div>
-                                );
-                              })}
+                                )}
+                                {submissionsForAssignment.length > 0 && (
+                                  <div className="mt-4 pt-4 border-t border-[var(--surm-green)]/20">
+                                    <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)] mb-3">Student Submissions ({submissionsForAssignment.length})</p>
+                                    <div className="space-y-3">
+                                      {submissionsForAssignment.map((submission) => {
+                                        const statusColor = submission.status === "APPROVED" ? "text-green-600 bg-green-50" : submission.status === "REJECTED" ? "text-red-600 bg-red-50" : "text-yellow-600 bg-yellow-50";
+                                        const statusLabel = submission.status.charAt(0) + submission.status.slice(1).toLowerCase();
+                                        return (
+                                          <div key={submission.id} className="rounded-lg p-3 bg-[var(--surm-paper)] border border-[var(--surm-green)]/10 flex items-center justify-between">
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)]">{submission.users.name}</p>
+                                                <span className={`text-xs font-sans px-2 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
+                                              </div>
+                                              <p className="text-xs font-sans text-[var(--surm-text-dark)]/60">{submission.users.email} • Submitted: {new Date(submission.createdAt).toLocaleString()}</p>
+                                            </div>
+                                            {submission.fileUrl && submission.fileUrl !== "no-file-uploaded" && (
+                                              <Button size="sm" variant="outline" onClick={() => window.open(submission.fileUrl, "_blank")} className="rounded-full ml-2">
+                                                <FileText className="w-4 h-4 mr-2" />View File
+                                              </Button>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                                {submissionsForAssignment.length === 0 && <p className="text-xs font-sans text-[var(--surm-text-dark)]/50 mt-2">No submissions yet</p>}
+                              </div>
+                              <div className="flex gap-2 flex-wrap justify-end">
+                                {!assignment.completed ? (
+                                  <Button size="sm" variant="outline" onClick={() => handleCompleteAssignment(assignment.id, true)} className="rounded-full text-green-700 border-green-300 hover:bg-green-50">
+                                    Complete
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" variant="outline" onClick={() => handleCompleteAssignment(assignment.id, false)} className="rounded-full text-yellow-700 border-yellow-300 hover:bg-yellow-50">
+                                    Restore
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" onClick={() => setEditAssignment(assignment)} className="rounded-full"><Edit className="w-4 h-4" /></Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="destructive" className="rounded-full bg-red-600 hover:bg-red-700 text-white border-red-700"><Trash2 className="w-4 h-4 text-white" /></Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader><AlertDialogTitle>Delete Assignment?</AlertDialogTitle><AlertDialogDescription>This will permanently delete &quot;{assignment.title}&quot;. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteAssignment(assignment.id)} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction></AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        {submissionsForAssignment.length === 0 && <p className="text-xs font-sans text-[var(--surm-text-dark)]/50 mt-2">No submissions yet</p>}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setEditAssignment(assignment)} className="rounded-full"><Edit className="w-4 h-4" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive" className="rounded-full bg-red-600 hover:bg-red-700 text-white border-red-700"><Trash2 className="w-4 h-4 text-white" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>Delete Assignment?</AlertDialogTitle><AlertDialogDescription>This will permanently delete &quot;{assignment.title}&quot;. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteAssignment(assignment.id)} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction></AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                          </section>
+                        );
+                      })}
                     </div>
-                  </section>
-                );
-              })}
-            </div>
-          )}
+                  )}
+                </TabsContent>
+              );
+            })}
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="grades" className="space-y-6">
@@ -871,17 +928,17 @@ export default function TeacherDashboardClient({
           <DialogHeader><DialogTitle>Add Grade</DialogTitle><DialogDescription>Assign a grade to a student for an assignment</DialogDescription></DialogHeader>
           <form onSubmit={handleSubmitGrade} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="grade-student">Student *</Label>
-              <Select value={selectedStudent} onValueChange={setSelectedStudent} required>
-                <SelectTrigger id="grade-student"><SelectValue placeholder="Select student" /></SelectTrigger>
-                <SelectContent>{students.map((student) => (<SelectItem key={student.id} value={student.id}>{student.name} ({LEVELS.find((l) => l.value === student.level)?.label})</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="grade-level-filter-dialog">Filter by Level (optional)</Label>
               <Select value={gradesLevelFilter} onValueChange={(value) => { setGradesLevelFilter(value as Level | "all"); if (selectedStudent) { const student = students.find(s => s.id === selectedStudent); if (student && value !== "all" && student.level !== value) setSelectedStudent(""); } }}>
                 <SelectTrigger id="grade-level-filter-dialog"><SelectValue placeholder="All Levels" /></SelectTrigger>
                 <SelectContent><SelectItem value="all">All Levels</SelectItem>{LEVELS.map((level) => (<SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="grade-student">Student *</Label>
+              <Select value={selectedStudent} onValueChange={setSelectedStudent} required>
+                <SelectTrigger id="grade-student"><SelectValue placeholder="Select student" /></SelectTrigger>
+                <SelectContent>{students.map((student) => (<SelectItem key={student.id} value={student.id}>{student.name} ({LEVELS.find((l) => l.value === student.level)?.label})</SelectItem>))}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
