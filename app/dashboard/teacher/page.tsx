@@ -160,6 +160,8 @@ export default async function TeacherDashboardPage() {
       const level = formData.get("level") as Level;
       const subject = formData.get("subject") as Subject;
       const dueDate = formData.get("dueDate") as string;
+      const fileUrl = (formData.get("fileUrl") as string) || null;
+      const videoUrl = (formData.get("videoUrl") as string) || null;
 
       if (!title || !description || !level || !subject || !dueDate) {
         throw new Error("Missing required fields");
@@ -173,6 +175,8 @@ export default async function TeacherDashboardPage() {
           level,
           subject,
           dueDate: new Date(dueDate),
+          fileUrl: fileUrl || null,
+          videoUrl: videoUrl || null,
           createdBy: currentUser.id,
           updatedAt: new Date(),
         },

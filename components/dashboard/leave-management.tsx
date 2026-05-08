@@ -146,7 +146,7 @@ export function LeaveManagement({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       {/* Balance Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Annual Leave</CardTitle></CardHeader>
             <CardContent>
@@ -159,6 +159,13 @@ export function LeaveManagement({ userId }: { userId: string }) {
             <CardContent>
                 <div className="text-2xl font-bold">{balance.medicalLeave.remaining} / {balance.medicalLeave.total}</div>
                 <p className="text-xs text-muted-foreground">{balance.medicalLeave.used} used, {balance.medicalLeave.pending} pending</p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Child Care Leave</CardTitle></CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{balance.childCareLeave?.remaining ?? 6} / {balance.childCareLeave?.total ?? 6}</div>
+                <p className="text-xs text-muted-foreground">{balance.childCareLeave?.used ?? 0} used, {balance.childCareLeave?.pending ?? 0} pending</p>
             </CardContent>
         </Card>
       </div>
@@ -176,6 +183,7 @@ export function LeaveManagement({ userId }: { userId: string }) {
                             <SelectContent>
                                 <SelectItem value={SubmissionType.ANNUAL_LEAVE}>Annual Leave</SelectItem>
                                 <SelectItem value={SubmissionType.MEDICAL_CERT}>Medical Leave (MC)</SelectItem>
+                                <SelectItem value={SubmissionType.CHILD_CARE_LEAVE}>Child Care Leave</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
