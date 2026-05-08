@@ -938,7 +938,7 @@ export default function TeacherDashboardClient({
               <Label htmlFor="grade-student">Student *</Label>
               <Select value={selectedStudent} onValueChange={setSelectedStudent} required>
                 <SelectTrigger id="grade-student"><SelectValue placeholder="Select student" /></SelectTrigger>
-                <SelectContent>{students.map((student) => (<SelectItem key={student.id} value={student.id}>{student.name} ({LEVELS.find((l) => l.value === student.level)?.label})</SelectItem>))}</SelectContent>
+                <SelectContent>{filteredStudentsForGrades.map((student) => (<SelectItem key={student.id} value={student.id}>{student.name} ({LEVELS.find((l) => l.value === student.level)?.label})</SelectItem>))}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
