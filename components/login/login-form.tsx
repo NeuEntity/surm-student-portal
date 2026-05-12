@@ -54,7 +54,7 @@ export default function LoginForm() {
           id="email"
           name="email"
           type="email"
-          placeholder="student@surm.edu"
+          placeholder="student@surm.edu.sg"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required

@@ -14,7 +14,7 @@ async function main() {
   const demoAccounts = [
     // Students
     {
-      email: "student1@surm.edu",
+      email: "student1@surm.edu.sg",
       name: "Student One (Sec 1)",
       role: Role.STUDENT,
       level: Level.SECONDARY_1,
@@ -25,7 +25,7 @@ async function main() {
       className: "Classroom 1",
     },
     {
-      email: "student2@surm.edu",
+      email: "student2@surm.edu.sg",
       name: "Student Two (Sec 2)",
       role: Role.STUDENT,
       level: Level.SECONDARY_2,
@@ -36,7 +36,7 @@ async function main() {
       className: "Classroom 2",
     },
     {
-      email: "student3@surm.edu",
+      email: "student3@surm.edu.sg",
       name: "Student Three (Sec 3)",
       role: Role.STUDENT,
       level: Level.SECONDARY_3,
@@ -47,7 +47,7 @@ async function main() {
       className: "Classroom 3 & 4",
     },
     {
-      email: "student4@surm.edu",
+      email: "student4@surm.edu.sg",
       name: "Student Four (Sec 4)",
       role: Role.STUDENT,
       level: Level.SECONDARY_4,
@@ -60,7 +60,7 @@ async function main() {
     
     // Teachers
     {
-      email: "teacher@surm.edu",
+      email: "teacher@surm.edu.sg",
       name: "Demo Teacher (Form & Tahfiz)",
       role: Role.TEACHER,
       level: null,
@@ -69,7 +69,7 @@ async function main() {
       employmentType: EmploymentType.FULL_TIME,
     },
     {
-      email: "teacher.form@surm.edu",
+      email: "teacher.form@surm.edu.sg",
       name: "Demo Form Teacher",
       role: Role.TEACHER,
       level: null,
@@ -78,7 +78,7 @@ async function main() {
       employmentType: EmploymentType.FULL_TIME,
     },
     {
-      email: "teacher.tahfiz@surm.edu",
+      email: "teacher.tahfiz@surm.edu.sg",
       name: "Demo Tahfiz Teacher",
       role: Role.TEACHER,
       level: null,
@@ -87,7 +87,7 @@ async function main() {
       employmentType: EmploymentType.FULL_TIME,
     },
     {
-      email: "teacher.subject@surm.edu",
+      email: "teacher.subject@surm.edu.sg",
       name: "Demo Subject Teacher",
       role: Role.TEACHER,
       level: null,

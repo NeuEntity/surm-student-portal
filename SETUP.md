@@ -48,9 +48,9 @@ pnpm dev
 ```
 
 Visit http://localhost:3000 and login with:
-- **Student**: `student1@surm.edu` / `password123`
-- **Teacher**: `teacher@surm.edu` / `password123`
-- **Admin**: `admin@surm.edu` / `password123`
+- **Student**: `student1@surm.edu.sg` / `password123`
+- **Teacher**: `teacher@surm.edu.sg` / `password123`
+- **Admin**: `admin@surm.edu.sg` / `password123`
 
 ## Common Issues
 

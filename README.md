@@ -97,16 +97,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 After seeding the database, you can use these demo accounts:
 
 ### Students (one per level)
-- **Email**: `student1@surm.edu` → Level: Secondary 1
-- **Email**: `student2@surm.edu` → Level: Secondary 2
-- **Email**: `student3@surm.edu` → Level: Secondary 3
-- **Email**: `student4@surm.edu` → Level: Secondary 4
+- **Email**: `student1@surm.edu.sg` → Level: Secondary 1
+- **Email**: `student2@surm.edu.sg` → Level: Secondary 2
+- **Email**: `student3@surm.edu.sg` → Level: Secondary 3
+- **Email**: `student4@surm.edu.sg` → Level: Secondary 4
 
 ### Teacher
-- **Email**: `teacher@surm.edu`
+- **Email**: `teacher@surm.edu.sg`
 
 ### Admin
-- **Email**: `admin@surm.edu`
+- **Email**: `admin@surm.edu.sg`
 
 **Password for all accounts**: `password123`
 

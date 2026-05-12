@@ -24,7 +24,7 @@ async function main() {
   // -- Students --
   const students = [
     {
-      email: "student1@surm.edu",
+      email: "student1@surm.edu.sg",
       name: "Student One (Sec 1)",
       level: Level.SECONDARY_1,
       ic: "T1111111A",
@@ -34,7 +34,7 @@ async function main() {
       class: "Classroom 1"
     },
     {
-      email: "student2@surm.edu",
+      email: "student2@surm.edu.sg",
       name: "Student Two (Sec 2)",
       level: Level.SECONDARY_2,
       ic: "T2222222B",
@@ -44,7 +44,7 @@ async function main() {
       class: "Classroom 2"
     },
     {
-      email: "student3@surm.edu",
+      email: "student3@surm.edu.sg",
       name: "Student Three (Sec 3)",
       level: Level.SECONDARY_3,
       ic: "T3333333C",
@@ -54,7 +54,7 @@ async function main() {
       class: "Classroom 3"
     },
     {
-      email: "student4@surm.edu",
+      email: "student4@surm.edu.sg",
       name: "Student Four (Sec 4)",
       level: Level.SECONDARY_4,
       ic: "T4444444D",
@@ -88,28 +88,28 @@ async function main() {
   // -- Teachers --
   const teachers = [
     {
-      email: "teacher@surm.edu",
+      email: "teacher@surm.edu.sg",
       name: "Ustaz Abdullah (Form & Tahfiz)",
       roles: ["FORM", "TAHFIZ"],
       classes: ["Classroom 1", "Halaqah 1"],
       type: EmploymentType.FULL_TIME
     },
     {
-      email: "teacher.form@surm.edu",
+      email: "teacher.form@surm.edu.sg",
       name: "Cikgu Siti (Form Only)",
       roles: ["FORM"],
       classes: ["Classroom 2"],
       type: EmploymentType.FULL_TIME
     },
     {
-      email: "teacher.tahfiz@surm.edu",
+      email: "teacher.tahfiz@surm.edu.sg",
       name: "Ustaz Yusuf (Tahfiz Only)",
       roles: ["TAHFIZ"],
       classes: ["Halaqah 2"],
       type: EmploymentType.PART_TIME
     },
     {
-      email: "teacher.subject@surm.edu",
+      email: "teacher.subject@surm.edu.sg",
       name: "Mr. Tan (Subject Only)",
       roles: ["SUBJECT"],
       classes: ["Mathematics", "Science"],
@@ -167,7 +167,7 @@ async function main() {
       level: Level.SECONDARY_1, 
       subject: Subject.IRK, 
       url: "https://www.youtube.com/embed/inpwu7t_qJI", // Tajweed Institute
-      user: "teacher@surm.edu" 
+      user: "teacher@surm.edu.sg" 
     },
     { 
       title: "Introduction to Algebra", 
@@ -175,7 +175,7 @@ async function main() {
       level: Level.SECONDARY_1, 
       subject: Subject.MATHS, 
       url: "https://www.youtube.com/embed/NybHckSEQBI", // Math Antics
-      user: "teacher.subject@surm.edu" 
+      user: "teacher.subject@surm.edu.sg" 
     },
     { 
       title: "Basic Arabic Grammar Notes", 
@@ -183,7 +183,7 @@ async function main() {
       level: Level.SECONDARY_1, 
       subject: Subject.ARABIC, 
       url: "https://www.kalamullah.com/Books/Arabic_Course_Vol_1.pdf", // Standard text
-      user: "teacher@surm.edu" 
+      user: "teacher@surm.edu.sg" 
     },
     { 
       title: "English: Parts of Speech", 
@@ -191,7 +191,7 @@ async function main() {
       level: Level.SECONDARY_1, 
       subject: Subject.ENGLISH, 
       url: "https://www.youtube.com/embed/0pQ47b7a660", 
-      user: "teacher.form@surm.edu" 
+      user: "teacher.form@surm.edu.sg" 
     },
     { 
       title: "Bahasa Melayu: Tatabahasa", 
@@ -199,7 +199,7 @@ async function main() {
       level: Level.SECONDARY_1, 
       subject: Subject.MALAY, 
       url: "https://www.youtube.com/embed/VideoID_BM1", 
-      user: "teacher.form@surm.edu" 
+      user: "teacher.form@surm.edu.sg" 
     },
 
     // === SECONDARY 2 ===
@@ -209,7 +209,7 @@ async function main() {
       level: Level.SECONDARY_2, 
       subject: Subject.SIRAH, 
       url: "https://www.youtube.com/embed/MeW0GDuuJVE", // Yasir Qadhi Seerah
-      user: "teacher.form@surm.edu" 
+      user: "teacher.form@surm.edu.sg" 
     },
     { 
       title: "Maths: Factorisation", 
@@ -217,7 +217,7 @@ async function main() {
       level: Level.SECONDARY_2, 
       subject: Subject.MATHS, 
       url: "https://www.youtube.com/embed/ZPz2h5n_Q2A", 
-      user: "teacher.subject@surm.edu" 
+      user: "teacher.subject@surm.edu.sg" 
     },
     { 
       title: "Fiqh: Fasting Rules", 
@@ -225,7 +225,7 @@ async function main() {
       level: Level.SECONDARY_2, 
       subject: Subject.FIQH, 
       url: "https://d1.islamhouse.com/data/en/ih_books/single/en_The_Fasting_of_Ramadan.pdf", 
-      user: "teacher@surm.edu" 
+      user: "teacher@surm.edu.sg" 
     },
     { 
       title: "English: Narrative Writing", 
@@ -233,7 +233,7 @@ async function main() {
       level: Level.SECONDARY_2, 
       subject: Subject.ENGLISH, 
       url: "https://www.youtube.com/embed/5YJtX7e8e8I", 
-      user: "teacher.form@surm.edu" 
+      user: "teacher.form@surm.edu.sg" 
     },
 
     // === SECONDARY 3 ===
@@ -243,7 +243,7 @@ async function main() {
       level: Level.SECONDARY_3, 
       subject: Subject.FARAIDH, 
       url: "https://www.youtube.com/embed/8y_8y_8y_8y", // Placeholder for specific Faraid video
-      user: "teacher@surm.edu" 
+      user: "teacher@surm.edu.sg" 
     },
     { 
       title: "Hadith: 40 Nawawi Explanation", 
@@ -251,7 +251,7 @@ async function main() {
       level: Level.SECONDARY_3, 
       subject: Subject.HADIS, 
       url: "https://www.kalamullah.com/Books/Commentary_on_the_Forty_Hadith_of_Al-Nawawi.pdf", 
-      user: "teacher@surm.edu" 
+      user: "teacher@surm.edu.sg" 
     },
     { 
       title: "Maths: Trigonometry", 
@@ -259,7 +259,7 @@ async function main() {
       level: Level.SECONDARY_3, 
       subject: Subject.MATHS, 
       url: "https://www.youtube.com/embed/Pub0ebnGADk", 
-      user: "teacher.subject@surm.edu" 
+      user: "teacher.subject@surm.edu.sg" 
     },
     { 
       title: "Akidah: Qada and Qadar", 
@@ -267,7 +267,7 @@ async function main() {
       level: Level.SECONDARY_3, 
       subject: Subject.AKIDAH, 
       url: "https://www.youtube.com/embed/VideoID_Aqidah", 
-      user: "teacher@surm.edu" 
+      user: "teacher@surm.edu.sg" 
     },
 
     // === SECONDARY 4 ===
@@ -285,7 +285,7 @@ async function main() {
       level: Level.SECONDARY_4, 
       subject: Subject.IRK, 
       url: "https://www.kalamullah.com/Books/An_Introduction_to_the_Sciences_of_the_Quran.pdf", 
-      user: "teacher@surm.edu" 
+      user: "teacher@surm.edu.sg" 
     },
     { 
       title: "Maths: Differentiation", 
@@ -293,7 +293,7 @@ async function main() {
       level: Level.SECONDARY_4, 
       subject: Subject.MATHS, 
       url: "https://www.youtube.com/embed/9vKqVkMqHKk", 
-      user: "teacher.subject@surm.edu" 
+      user: "teacher.subject@surm.edu.sg" 
     },
     { 
       title: "English: O-Level Essay Tips", 
@@ -301,7 +301,7 @@ async function main() {
       level: Level.SECONDARY_4, 
       subject: Subject.ENGLISH, 
       url: "https://www.youtube.com/embed/VideoID_English", 
-      user: "teacher.form@surm.edu" 
+      user: "teacher.form@surm.edu.sg" 
     }
   ];
 
@@ -326,21 +326,21 @@ async function main() {
 
   const assignmentsData = [
     // Student 1 (Sec 1)
-    { title: "Wudu Practical Video", subject: Subject.FIQH, level: Level.SECONDARY_1, user: "teacher@surm.edu", due: new Date(Date.now() + 86400000 * 7) }, 
-    { title: "Algebra Quiz 1", subject: Subject.MATHS, level: Level.SECONDARY_1, user: "teacher.subject@surm.edu", due: new Date(Date.now() - 86400000 * 2) },
-    { title: "English: Family Essay", subject: Subject.ENGLISH, level: Level.SECONDARY_1, user: "teacher.form@surm.edu", due: new Date(Date.now() + 86400000 * 5) },
+    { title: "Wudu Practical Video", subject: Subject.FIQH, level: Level.SECONDARY_1, user: "teacher@surm.edu.sg", due: new Date(Date.now() + 86400000 * 7) }, 
+    { title: "Algebra Quiz 1", subject: Subject.MATHS, level: Level.SECONDARY_1, user: "teacher.subject@surm.edu.sg", due: new Date(Date.now() - 86400000 * 2) },
+    { title: "English: Family Essay", subject: Subject.ENGLISH, level: Level.SECONDARY_1, user: "teacher.form@surm.edu.sg", due: new Date(Date.now() + 86400000 * 5) },
     
     // Student 2 (Sec 2)
-    { title: "Seerah Essay: Hijrah", subject: Subject.SIRAH, level: Level.SECONDARY_2, user: "teacher.form@surm.edu", due: new Date(Date.now() + 86400000 * 3) },
-    { title: "Science Project: Plants", subject: Subject.MATHS, level: Level.SECONDARY_2, user: "teacher.subject@surm.edu", due: new Date(Date.now() + 86400000 * 10) },
+    { title: "Seerah Essay: Hijrah", subject: Subject.SIRAH, level: Level.SECONDARY_2, user: "teacher.form@surm.edu.sg", due: new Date(Date.now() + 86400000 * 3) },
+    { title: "Science Project: Plants", subject: Subject.MATHS, level: Level.SECONDARY_2, user: "teacher.subject@surm.edu.sg", due: new Date(Date.now() + 86400000 * 10) },
     
     // Student 3 (Sec 3)
-    { title: "Zakat Case Study", subject: Subject.FIQH, level: Level.SECONDARY_3, user: "teacher@surm.edu", due: new Date(Date.now() - 86400000 * 5) },
-    { title: "Hadith Memorization", subject: Subject.HADIS, level: Level.SECONDARY_3, user: "teacher@surm.edu", due: new Date(Date.now() + 86400000 * 14) },
+    { title: "Zakat Case Study", subject: Subject.FIQH, level: Level.SECONDARY_3, user: "teacher@surm.edu.sg", due: new Date(Date.now() - 86400000 * 5) },
+    { title: "Hadith Memorization", subject: Subject.HADIS, level: Level.SECONDARY_3, user: "teacher@surm.edu.sg", due: new Date(Date.now() + 86400000 * 14) },
     
     // Student 4 (Sec 4)
     { title: "Islamic Banking Report", subject: Subject.FIQH, level: Level.SECONDARY_4, user: "principal@surm.edu.sg", due: new Date(Date.now() + 86400000 * 14) },
-    { title: "Calculus Problem Set", subject: Subject.MATHS, level: Level.SECONDARY_4, user: "teacher.subject@surm.edu", due: new Date(Date.now() + 86400000 * 3) }
+    { title: "Calculus Problem Set", subject: Subject.MATHS, level: Level.SECONDARY_4, user: "teacher.subject@surm.edu.sg", due: new Date(Date.now() + 86400000 * 3) }
   ];
 
   const createdAssignments: any[] = [];
@@ -365,7 +365,7 @@ async function main() {
 
   // S1: Algebra Quiz (Overdue, Submitted Late, Graded)
   const s1_assign = createdAssignments[1]; // Algebra
-  const s1_user = createdStudents["student1@surm.edu"];
+  const s1_user = createdStudents["student1@surm.edu.sg"];
   await prisma.submissions.create({
     data: {
       id: crypto.randomUUID(),
@@ -386,14 +386,14 @@ async function main() {
       score: 85,
       maxScore: 100,
       feedback: "Good effort, but watch out for sign errors in Question 3.",
-      gradedBy: createdTeachers["teacher.subject@surm.edu"].id,
+      gradedBy: createdTeachers["teacher.subject@surm.edu.sg"].id,
       updatedAt: new Date(),
     }
   });
 
   // S2: Seerah Essay (Submitted Early, Pending Grading)
   const s2_assign = createdAssignments[3]; // Seerah (Index 3 because added extra assign for S1)
-  const s2_user = createdStudents["student2@surm.edu"];
+  const s2_user = createdStudents["student2@surm.edu.sg"];
   await prisma.submissions.create({
     data: {
       id: crypto.randomUUID(),
@@ -414,7 +414,7 @@ async function main() {
   await prisma.submissions.create({
     data: {
       id: crypto.randomUUID(),
-      userId: createdTeachers["teacher@surm.edu"].id,
+      userId: createdTeachers["teacher@surm.edu.sg"].id,
       type: SubmissionType.ANNUAL_LEAVE,
       fileUrl: "https://example.com/leave_form.pdf",
       status: SubmissionStatus.APPROVED,
@@ -428,7 +428,7 @@ async function main() {
   await prisma.submissions.create({
     data: {
       id: crypto.randomUUID(),
-      userId: createdTeachers["teacher.form@surm.edu"].id,
+      userId: createdTeachers["teacher.form@surm.edu.sg"].id,
       type: SubmissionType.ANNUAL_LEAVE,
       fileUrl: "https://example.com/urgent_leave.pdf",
       status: SubmissionStatus.PENDING,
@@ -442,7 +442,7 @@ async function main() {
   await prisma.submissions.create({
     data: {
       id: crypto.randomUUID(),
-      userId: createdStudents["student4@surm.edu"].id,
+      userId: createdStudents["student4@surm.edu.sg"].id,
       type: SubmissionType.MEDICAL_CERT,
       fileUrl: "https://example.com/mc_clinic.jpg",
       status: SubmissionStatus.APPROVED,
@@ -456,7 +456,7 @@ async function main() {
   await prisma.submissions.create({
     data: {
       id: crypto.randomUUID(),
-      userId: createdStudents["student1@surm.edu"].id,
+      userId: createdStudents["student1@surm.edu.sg"].id,
       type: SubmissionType.LETTERS,
       fileUrl: "https://example.com/parent_letter.pdf",
       status: SubmissionStatus.PENDING,

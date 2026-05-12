@@ -38,26 +38,26 @@ Use the following credentials to access the system in **Demo Mode**. These accou
 
 | Level | Email | Features to Test |
 | :--- | :--- | :--- |
-| **Sec 1** | `student1@surm.edu` | View 'Wudu Practical' assignment, check Grades. |
-| **Sec 2** | `student2@surm.edu` | Submit 'Seerah Essay', view 'Fasting Rules' PDF. |
-| **Sec 3** | `student3@surm.edu` | View 'Faraid' videos, check 'Zakat' deadline. |
-| **Sec 4** | `student4@surm.edu` | View 'Islamic Banking' report, check approved MC. |
+| **Sec 1** | `student1@surm.edu.sg` | View 'Wudu Practical' assignment, check Grades. |
+| **Sec 2** | `student2@surm.edu.sg` | Submit 'Seerah Essay', view 'Fasting Rules' PDF. |
+| **Sec 3** | `student3@surm.edu.sg` | View 'Faraid' videos, check 'Zakat' deadline. |
+| **Sec 4** | `student4@surm.edu.sg` | View 'Islamic Banking' report, check approved MC. |
 
 ### 👩‍🏫 Teacher Accounts
 
 | Role | Email | Features to Test |
 | :--- | :--- | :--- |
-| **Multi-Role** | `teacher@surm.edu` | Manage both Form Class & Tahfiz Halaqah. |
-| **Form Teacher** | `teacher.form@surm.edu` | Approve student leave, view class attendance. |
-| **Tahfiz Teacher** | `teacher.tahfiz@surm.edu` | Manage Quran memorization logs. |
-| **Subject Teacher** | `teacher.subject@surm.edu` | Grade 'Algebra Quiz', upload Maths slides. |
-| **Principal** | `principal@surm.edu.sg` | View all classes, oversee curriculum. |
+| **Multi-Role** | `teacher@surm.edu.sg` | Manage both Form Class & Tahfiz Halaqah. |
+| **Form Teacher** | `teacher.form@surm.edu.sg` | Approve student leave, view class attendance. |
+| **Tahfiz Teacher** | `teacher.tahfiz@surm.edu.sg` | Manage Quran memorization logs. |
+| **Subject Teacher** | `teacher.subject@surm.edu.sg` | Grade 'Algebra Quiz', upload Maths slides. |
+| **Principal** | `principal@surm.edu.sg.sg` | View all classes, oversee curriculum. |
 
 ### ⚙️ Admin Account
 
 | Role | Email | Features to Test |
 | :--- | :--- | :--- |
-| **Administrator** | `admin@surm.edu.sg` | User management dashboard. |
+| **Administrator** | `admin@surm.edu.sg.sg` | User management dashboard. |
 
 ---
 
@@ -69,6 +69,6 @@ The system has been populated with the official class lists for Academic Year 20
 
 *   **Students:** `firstname.lastname@student.surm.edu.sg`
     *   *Example:* `aasjad.bin@student.surm.edu.sg`
-*   **Teachers:** `ustaz.firstname.lastname@surm.edu.sg`
-    *   *Example:* `ustaz.noor.lindah@surm.edu.sg`
+*   **Teachers:** `ustaz.firstname.lastname@surm.edu.sg.sg`
+    *   *Example:* `ustaz.noor.lindah@surm.edu.sg.sg`
 *   **Password:** `password123` (Please change upon first login)

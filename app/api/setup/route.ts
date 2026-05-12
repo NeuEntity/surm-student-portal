@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     const users = [
       {
         id: "student1",
-        email: "student1@surm.edu",
+        email: "student1@surm.edu.sg",
         password: hashedPassword,
         name: "Student One",
         role: "STUDENT" as const,
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
       },
       {
         id: "student2",
-        email: "student2@surm.edu",
+        email: "student2@surm.edu.sg",
         password: hashedPassword,
         name: "Student Two",
         role: "STUDENT" as const,
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       },
       {
         id: "student3",
-        email: "student3@surm.edu",
+        email: "student3@surm.edu.sg",
         password: hashedPassword,
         name: "Student Three",
         role: "STUDENT" as const,
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
       },
       {
         id: "student4",
-        email: "student4@surm.edu",
+        email: "student4@surm.edu.sg",
         password: hashedPassword,
         name: "Student Four",
         role: "STUDENT" as const,
@@ -109,7 +109,7 @@ export async function GET(request: Request) {
       },
       {
         id: "teacher1",
-        email: "teacher@surm.edu",
+        email: "teacher@surm.edu.sg",
         password: hashedPassword,
         name: "Teacher",
         role: "TEACHER" as const,
@@ -118,7 +118,7 @@ export async function GET(request: Request) {
       },
       {
         id: "admin1",
-        email: "admin@surm.edu",
+        email: "admin@surm.edu.sg",
         password: hashedPassword,
         name: "Admin",
         role: "ADMIN" as const,
