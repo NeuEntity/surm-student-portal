@@ -84,9 +84,14 @@ const SUBJECTS = [
   { value: "MUSTOLAH_HADIS", label: "Mustolah Hadis" },
   { value: "ENGLISH", label: "English" },
   { value: "MALAY", label: "Bahasa Melayu" },
-  { value: "ARABIC", label: "Arabic" },
   { value: "MATHS", label: "Maths" },
   { value: "IRK", label: "IRK" },
+  { value: "TAFSIR", label: "Tafsir" },
+  { value: "TAJWID", label: "Tajwid" },
+  { value: "ULUM_QURAN", label: "Ulum Quran" },
+  { value: "TAHFIZ", label: "Tahfiz" },
+  { value: "LUGHAH", label: "Lughah" },
+  { value: "NAHU", label: "Nahu" },
 ];
 
 const VIDEO_FILE_EXTENSIONS = ["mp4", "mov", "m4v", "webm", "mkv", "avi"];

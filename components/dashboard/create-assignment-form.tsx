@@ -20,9 +20,14 @@ const SUBJECTS = [
   { value: Subject.MUSTOLAH_HADIS, label: "Mustolah Hadis" },
   { value: Subject.ENGLISH, label: "English" },
   { value: Subject.MALAY, label: "Bahasa Melayu" },
-  { value: Subject.ARABIC, label: "Arabic" },
   { value: Subject.MATHS, label: "Maths" },
   { value: Subject.IRK, label: "IRK" },
+  { value: Subject.TAFSIR, label: "Tafsir" },
+  { value: Subject.TAJWID, label: "Tajwid" },
+  { value: Subject.ULUM_QURAN, label: "Ulum Quran" },
+  { value: Subject.TAHFIZ, label: "Tahfiz" },
+  { value: Subject.LUGHAH, label: "Lughah" },
+  { value: Subject.NAHU, label: "Nahu" },
 ];
 
 const LEVELS = [

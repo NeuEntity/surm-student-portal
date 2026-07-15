@@ -14,6 +14,8 @@ model assignments {
   level       Level
   subject     Subject
   dueDate     DateTime
+  fileUrl     String?
+  attachments Json?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime
   createdBy   String?
@@ -153,6 +155,12 @@ enum Subject {
   ARABIC
   MATHS
   IRK
+  TAFSIR
+  TAJWID
+  ULUM_QURAN
+  TAHFIZ
+  LUGHAH
+  NAHU
 }
 
 enum SubmissionStatus {
