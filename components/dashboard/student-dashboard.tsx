@@ -40,6 +40,8 @@ type Assignment = {
   subject: Subject;
   dueDate: Date;
   createdAt: Date;
+  fileUrl?: string | null;
+  videoUrl?: string | null;
 };
 
 type Submission = {
@@ -1234,6 +1236,39 @@ export default function StudentDashboard({
                                 </span>
                               )}
                             </div>
+
+                            {(assignment.fileUrl || assignment.videoUrl) && (
+                              <div className="flex flex-wrap gap-4 mb-3 sm:mb-4">
+                                {assignment.fileUrl && (
+                                  <a
+                                    href={assignment.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`inline-flex items-center gap-2 text-xs sm:text-sm font-sans underline ${
+                                      isBeige ? "text-[var(--surm-green)]" : "text-white"
+                                    }`}
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    View attached file
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                                {assignment.videoUrl && (
+                                  <a
+                                    href={assignment.videoUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`inline-flex items-center gap-2 text-xs sm:text-sm font-sans underline ${
+                                      isBeige ? "text-[var(--surm-green)]" : "text-white"
+                                    }`}
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    Watch video
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
 
