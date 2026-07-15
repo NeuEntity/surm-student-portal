@@ -53,7 +53,10 @@ export default async function Secondary1Page() {
         ...m,
         attachments: m.attachments as any,
       }))}
-      assignments={assignments}
+      assignments={assignments.map(a => ({
+        ...a,
+        attachments: a.attachments as any,
+      }))}
       submissions={submissions}
       grades={grades}
       userId={user.id}

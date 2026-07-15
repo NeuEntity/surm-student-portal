@@ -58,6 +58,7 @@ type Assignment = {
   level: Level;
   subject: Subject;
   dueDate: Date;
+  fileUrl?: string | null;
 };
 
 type Student = {
@@ -546,6 +547,11 @@ export default function TeacherDashboardClient({
                           <span>{SUBJECTS.find((s) => s.value === assignment.subject)?.label}</span>
                           <span>Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
                         </div>
+                        {assignment.fileUrl && (
+                          <Button size="sm" variant="outline" onClick={() => window.open(assignment.fileUrl!, "_blank")} className="rounded-full mb-4">
+                            <FileText className="w-4 h-4 mr-2" />View Attached File
+                          </Button>
+                        )}
                         {submissionsForAssignment.length > 0 && (
                           <div className="mt-4 pt-4 border-t border-[var(--surm-green)]/20">
                             <p className="text-sm font-semibold font-sans text-[var(--surm-text-dark)] mb-3">Student Submissions ({submissionsForAssignment.length})</p>

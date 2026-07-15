@@ -40,6 +40,8 @@ type Assignment = {
   subject: Subject;
   dueDate: Date;
   createdAt: Date;
+  fileUrl?: string | null;
+  attachments?: { url: string; name: string; type: string; size: number }[] | null;
 };
 
 type Submission = {
@@ -1234,6 +1236,21 @@ export default function StudentDashboard({
                                 </span>
                               )}
                             </div>
+
+                            {assignment.fileUrl && (
+                              <a
+                                href={assignment.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center gap-2 text-xs sm:text-sm font-sans mb-3 sm:mb-4 underline ${
+                                  isBeige ? "text-[var(--surm-green)]" : "text-white"
+                                }`}
+                              >
+                                <FileText className="w-4 h-4" />
+                                {assignment.attachments?.[0]?.name || "View attached file"}
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
                           </div>
                         </div>
 

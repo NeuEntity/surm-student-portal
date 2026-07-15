@@ -160,6 +160,17 @@ export default async function TeacherDashboardPage() {
       const level = formData.get("level") as Level;
       const subject = formData.get("subject") as Subject;
       const dueDate = formData.get("dueDate") as string;
+      const fileUrl = (formData.get("fileUrl") as string) || "";
+      const attachmentsRaw = formData.get("attachments") as string | null;
+
+      let attachments: any = null;
+      if (attachmentsRaw) {
+        try {
+          attachments = JSON.parse(attachmentsRaw);
+        } catch (error) {
+          console.error("Failed to parse attachments payload", error);
+        }
+      }
 
       if (!title || !description || !level || !subject || !dueDate) {
         throw new Error("Missing required fields");
@@ -173,6 +184,8 @@ export default async function TeacherDashboardPage() {
           level,
           subject,
           dueDate: new Date(dueDate),
+          fileUrl: fileUrl || attachments?.[0]?.url || null,
+          attachments: attachments || null,
           createdBy: currentUser.id,
           updatedAt: new Date(),
         },
