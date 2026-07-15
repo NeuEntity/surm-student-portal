@@ -16,6 +16,7 @@ model assignments {
   dueDate     DateTime
   fileUrl     String?
   attachments Json?
+  completed   Boolean       @default(false)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime
   createdBy   String?
@@ -172,6 +173,7 @@ enum SubmissionType {
   LETTERS
   ASSIGNMENT
   ANNUAL_LEAVE
+  CHILD_CARE_LEAVE
 }
 
 enum EmploymentType {
