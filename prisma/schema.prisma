@@ -15,13 +15,11 @@ model assignments {
   subject     Subject
   dueDate     DateTime
   fileUrl     String?
-  attachments Json?
+  videoUrl    String?
+  completed   Boolean       @default(false)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime
   createdBy   String?
-  completed   Boolean       @default(false)
-  fileUrl     String?
-  videoUrl    String?
   users       users?        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   grades      grades[]
   submissions submissions[]
