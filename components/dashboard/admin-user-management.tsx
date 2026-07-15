@@ -80,6 +80,7 @@ const TEACHER_ROLES = [
   { value: "TAHFIZ", label: "Tahfiz Teacher" },
   { value: "FORM", label: "Form Teacher" },
   { value: "PRINCIPAL", label: "Principal" },
+  { value: "SUBJECT_TEACHER", label: "Subject Teacher" },
 ];
 
 const LEVELS_TAUGHT = [
@@ -87,6 +88,7 @@ const LEVELS_TAUGHT = [
   { value: "SECONDARY_2", label: "Secondary 2" },
   { value: "SECONDARY_3", label: "Secondary 3" },
   { value: "SECONDARY_4", label: "Secondary 4" },
+  { value: "TAHFIZ", label: "Tahfiz" },
 ];
 
 const EMPLOYMENT_TYPES = [
