@@ -187,6 +187,10 @@ export function CreateAssignmentForm({ createAssignment }: { createAssignment: (
           required
         />
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="assign-due">Due Date *</Label>
+        <Input id="assign-due" name="dueDate" type="date" required />
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="assign-fileUrl">File URL</Label>
