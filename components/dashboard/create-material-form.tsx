@@ -202,7 +202,7 @@ export function CreateMaterialForm({ createMaterial }: { createMaterial: (formDa
               The first file becomes the main preview. Upload multiple resources (videos, PDFs, slides, etc.).
             </p>
           </div>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-[var(--surm-text-dark)] shadow">
+          <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-sm font-medium text-[var(--surm-text-dark)] shadow">
             <Upload className="w-4 h-4" />
             Add Files
             <input type="file" multiple className="hidden" onChange={handleFileSelection} />
